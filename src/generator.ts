@@ -27,13 +27,13 @@ export async function generateProjectSpectrogram(results: FileScanResult[], outp
   }
 
   const totalFiles = results.length;
-  if (totalFiles === 0) return;
+  if (totalFiles === 0) return { pngPath: "", tablePath: "", mappingTable: [] };
 
   const slotWidth = Math.floor(WIDTH / totalFiles);
 
   results.forEach((result, fileIdx) => {
     const xStart = fileIdx * slotWidth;
-    const xEnd = (fileIdx + 1) * slotWidth - 1; // Leave 1px for Silent Frame
+    const xEnd = (fileIdx + 1) * slotWidth - 1; 
     
     mappingTable.push({
       x_range: [xStart, xEnd],
@@ -47,22 +47,17 @@ export async function generateProjectSpectrogram(results: FileScanResult[], outp
     const maxLine = Math.max(...result.nodes.map(n => n.line), 1);
 
     for (const node of result.nodes) {
-      // Map Line to X within the slot
       const xOffset = Math.floor((node.line / maxLine) * (slotWidth - 2));
       const x = xStart + xOffset;
-      
       const y = HEIGHT - 1 - Math.floor((node.hz / MAX_HZ) * (HEIGHT - 1));
 
       if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) continue;
 
       const idx = (WIDTH * y + x) << 2;
-
       let r = 0, g = 0, b = 0;
 
       if (node.isComplexityGrowl) {
-        // Complexity Growl: Wide Red Gradient
         r = 255; g = 30; b = 30;
-        // Spread the growl slightly on X
         for (let sx = -2; sx <= 2; sx++) {
             const sidx = (WIDTH * y + (x + sx)) << 2;
             if (sidx >= 0 && sidx < png.data.length) {
@@ -70,13 +65,13 @@ export async function generateProjectSpectrogram(results: FileScanResult[], outp
             }
         }
       } else if (node.hz >= HOLOGRAPHIC_LAYERS.ANOMALY.min) {
-        r = 255; g = 0; b = 255; // Anomaly Magenta
+        r = 255; g = 0; b = 255;
       } else if (result.layer === 'STYLES') {
-        r = 50; g = 200; b = 255; // Style Cyan
+        r = 50; g = 200; b = 255;
       } else if (result.layer === 'MARKUP') {
-        r = 255; g = 150; b = 50; // Markup Orange
+        r = 255; g = 150; b = 50;
       } else {
-        r = 50; g = 255; b = 150; // Logic Green
+        r = 50; g = 255; b = 150;
       }
 
       png.data[idx] = Math.min(255, png.data[idx] + r * node.amplitude);
@@ -84,7 +79,6 @@ export async function generateProjectSpectrogram(results: FileScanResult[], outp
       png.data[idx + 2] = Math.min(255, png.data[idx + 2] + b * node.amplitude);
     }
 
-    // Draw Silent Frame (Black vertical line)
     const silentX = xEnd + 1;
     if (silentX < WIDTH) {
       for (let sy = 0; sy < HEIGHT; sy++) {
@@ -96,17 +90,18 @@ export async function generateProjectSpectrogram(results: FileScanResult[], outp
     }
   });
 
-  // Save PNG
   const pngPath = path.join(outputDir, "spectrogram.png");
-  await new Promise<void>((resolve, reject) => {
-    png.pack().pipe(fs.createWriteStream(pngPath)).on("finish", resolve).on("error", reject);
-  });
-
-  // Save Mapping Table
   const tablePath = path.join(outputDir, "mapping_table.json");
-  fs.writeFileSync(tablePath, JSON.stringify(mappingTable, null, 2));
 
-  // Redirect status updates to stderr to keep stdout clean for JSON-RPC
-  console.error(`✨ Project Spectrogram generated at: ${pngPath}`);
-  console.error(`📋 Mapping Table saved at: ${tablePath}`);
+  try {
+    await new Promise<void>((resolve, reject) => {
+      png.pack().pipe(fs.createWriteStream(pngPath)).on("finish", resolve).on("error", reject);
+    });
+    fs.writeFileSync(tablePath, JSON.stringify(mappingTable, null, 2));
+  } catch (err) {
+    console.error(`💥 Disk Write Error: ${err}`);
+    throw err;
+  }
+
+  return { pngPath, tablePath, mappingTable };
 }
