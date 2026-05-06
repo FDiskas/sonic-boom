@@ -5,12 +5,22 @@ export const HOLOGRAPHIC_LAYERS = {
   ANOMALY: { min: 16000, max: 20000 },
 };
 
-export const FREQUENCY_MAP = {
-  INFRASTRUCTURE: { min: 0, max: 0.1 },     // Percentages within the layer's range
-  STRUCTURAL_HOOKS: { min: 0.1, max: 0.3 },
-  LOGIC_FLOW: { min: 0.3, max: 0.6 },
-  DATA_OPS: { min: 0.6, max: 0.9 },
-  UI_JSX: { min: 0.9, max: 1.0 },
+// Precise Hz Offsets for JIT Resolution within the Logic Layer
+export const NODE_TYPE_OFFSETS: Record<string, number> = {
+  "ImportDeclaration": 100,
+  "VariableDeclaration": 500,
+  "FunctionDeclaration": 1000,
+  "ArrowFunction": 1200,
+  "ClassDeclaration": 1500,
+  "IfStatement": 2000,
+  "SwitchStatement": 2500,
+  "BinaryExpression": 3000,
+  "CallExpression": 3500,
+  "JsxElement": 4000,
+  "JsxAttribute": 4200,
+  "InterfaceDeclaration": 5000,
+  "TypeAliasDeclaration": 5500,
+  "CommentLine": 7000,
 };
 
 export const SPECTROGRAM_CONFIG = {
@@ -20,4 +30,5 @@ export const SPECTROGRAM_CONFIG = {
   MIN_HZ: 20,
   COMPLEXITY_THRESHOLD: 5,
   NESTING_THRESHOLD: 5,
+  CONTEXT_WINDOW: 20, // lines
 };
