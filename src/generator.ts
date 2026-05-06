@@ -106,6 +106,7 @@ export async function generateProjectSpectrogram(results: FileScanResult[], outp
   const tablePath = path.join(outputDir, "mapping_table.json");
   fs.writeFileSync(tablePath, JSON.stringify(mappingTable, null, 2));
 
-  console.log(`✨ Project Spectrogram generated at: ${pngPath}`);
-  console.log(`📋 Mapping Table saved at: ${tablePath}`);
+  // Redirect status updates to stderr to keep stdout clean for JSON-RPC
+  console.error(`✨ Project Spectrogram generated at: ${pngPath}`);
+  console.error(`📋 Mapping Table saved at: ${tablePath}`);
 }

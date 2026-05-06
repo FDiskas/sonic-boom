@@ -54,7 +54,7 @@ export function scanDirectory(rootDir: string, manualExclusions: string[] = []):
       const nodes = scanCode(content, relativePath, layer);
       if (nodes.length > 0) results.push({ fileName: relativePath, nodes, layer });
     } catch (err) {
-      console.warn(`⚠️ Skipping ${file}: ${err instanceof Error ? err.message : err}`);
+      console.error(`⚠️ Skipping ${file}: ${err instanceof Error ? err.message : err}`);
     }
   }
   return results;

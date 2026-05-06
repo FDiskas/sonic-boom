@@ -1,0 +1,640 @@
+[
+  {
+    "x_range": [
+      0,
+      34
+    ],
+    "file": "emails\\verify-email.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 212
+    }
+  },
+  {
+    "x_range": [
+      35,
+      69
+    ],
+    "file": "next.config.ts",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 54
+    }
+  },
+  {
+    "x_range": [
+      70,
+      104
+    ],
+    "file": "public\\file.svg",
+    "metadata": {
+      "type": "MARKUP",
+      "nodeCount": 1
+    }
+  },
+  {
+    "x_range": [
+      105,
+      139
+    ],
+    "file": "public\\globe.svg",
+    "metadata": {
+      "type": "MARKUP",
+      "nodeCount": 1
+    }
+  },
+  {
+    "x_range": [
+      140,
+      174
+    ],
+    "file": "public\\next.svg",
+    "metadata": {
+      "type": "MARKUP",
+      "nodeCount": 1
+    }
+  },
+  {
+    "x_range": [
+      175,
+      209
+    ],
+    "file": "public\\vercel.svg",
+    "metadata": {
+      "type": "MARKUP",
+      "nodeCount": 1
+    }
+  },
+  {
+    "x_range": [
+      210,
+      244
+    ],
+    "file": "public\\window.svg",
+    "metadata": {
+      "type": "MARKUP",
+      "nodeCount": 1
+    }
+  },
+  {
+    "x_range": [
+      245,
+      279
+    ],
+    "file": "README.md",
+    "metadata": {
+      "type": "MARKUP",
+      "nodeCount": 88
+    }
+  },
+  {
+    "x_range": [
+      280,
+      314
+    ],
+    "file": "src\\app\\(auth)\\layout.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 196
+    }
+  },
+  {
+    "x_range": [
+      315,
+      349
+    ],
+    "file": "src\\app\\(auth)\\login\\page.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 194
+    }
+  },
+  {
+    "x_range": [
+      350,
+      384
+    ],
+    "file": "src\\app\\(auth)\\login\\_components\\EmailSignUp.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 285
+    }
+  },
+  {
+    "x_range": [
+      385,
+      419
+    ],
+    "file": "src\\app\\(auth)\\login\\_components\\GithubSignUpButton.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 170
+    }
+  },
+  {
+    "x_range": [
+      420,
+      454
+    ],
+    "file": "src\\app\\(auth)\\login\\_components\\LoginButton.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 72
+    }
+  },
+  {
+    "x_range": [
+      455,
+      489
+    ],
+    "file": "src\\app\\(auth)\\login\\_components\\LogoutButton.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 122
+    }
+  },
+  {
+    "x_range": [
+      490,
+      524
+    ],
+    "file": "src\\app\\(auth)\\verify-request\\page.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 427
+    }
+  },
+  {
+    "x_range": [
+      525,
+      559
+    ],
+    "file": "src\\app\\api\\auth\\[...all]\\route.ts",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 26
+    }
+  },
+  {
+    "x_range": [
+      560,
+      594
+    ],
+    "file": "src\\app\\globals.css",
+    "metadata": {
+      "type": "STYLES",
+      "nodeCount": 123
+    }
+  },
+  {
+    "x_range": [
+      595,
+      629
+    ],
+    "file": "src\\app\\layout.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 158
+    }
+  },
+  {
+    "x_range": [
+      630,
+      664
+    ],
+    "file": "src\\app\\page.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 134
+    }
+  },
+  {
+    "x_range": [
+      665,
+      699
+    ],
+    "file": "src\\components\\theme-provider.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 48
+    }
+  },
+  {
+    "x_range": [
+      700,
+      734
+    ],
+    "file": "src\\components\\ui\\alert-dialog.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 433
+    }
+  },
+  {
+    "x_range": [
+      735,
+      769
+    ],
+    "file": "src\\components\\ui\\avatar.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 139
+    }
+  },
+  {
+    "x_range": [
+      770,
+      804
+    ],
+    "file": "src\\components\\ui\\badge.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 127
+    }
+  },
+  {
+    "x_range": [
+      805,
+      839
+    ],
+    "file": "src\\components\\ui\\breadcrumb.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 341
+    }
+  },
+  {
+    "x_range": [
+      840,
+      874
+    ],
+    "file": "src\\components\\ui\\button.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 162
+    }
+  },
+  {
+    "x_range": [
+      875,
+      909
+    ],
+    "file": "src\\components\\ui\\card.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 260
+    }
+  },
+  {
+    "x_range": [
+      910,
+      944
+    ],
+    "file": "src\\components\\ui\\chart.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 1406
+    }
+  },
+  {
+    "x_range": [
+      945,
+      979
+    ],
+    "file": "src\\components\\ui\\checkbox.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 98
+    }
+  },
+  {
+    "x_range": [
+      980,
+      1014
+    ],
+    "file": "src\\components\\ui\\collapsible.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 100
+    }
+  },
+  {
+    "x_range": [
+      1015,
+      1049
+    ],
+    "file": "src\\components\\ui\\dialog.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 443
+    }
+  },
+  {
+    "x_range": [
+      1050,
+      1084
+    ],
+    "file": "src\\components\\ui\\drawer.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 403
+    }
+  },
+  {
+    "x_range": [
+      1085,
+      1119
+    ],
+    "file": "src\\components\\ui\\dropdown-menu.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 733
+    }
+  },
+  {
+    "x_range": [
+      1120,
+      1154
+    ],
+    "file": "src\\components\\ui\\form.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 601
+    }
+  },
+  {
+    "x_range": [
+      1155,
+      1189
+    ],
+    "file": "src\\components\\ui\\input-otp.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 249
+    }
+  },
+  {
+    "x_range": [
+      1190,
+      1224
+    ],
+    "file": "src\\components\\ui\\input.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 58
+    }
+  },
+  {
+    "x_range": [
+      1225,
+      1259
+    ],
+    "file": "src\\components\\ui\\label.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 61
+    }
+  },
+  {
+    "x_range": [
+      1260,
+      1294
+    ],
+    "file": "src\\components\\ui\\progress.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 104
+    }
+  },
+  {
+    "x_range": [
+      1295,
+      1329
+    ],
+    "file": "src\\components\\ui\\select.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 597
+    }
+  },
+  {
+    "x_range": [
+      1330,
+      1364
+    ],
+    "file": "src\\components\\ui\\separator.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 75
+    }
+  },
+  {
+    "x_range": [
+      1365,
+      1399
+    ],
+    "file": "src\\components\\ui\\sheet.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 467
+    }
+  },
+  {
+    "x_range": [
+      1400,
+      1434
+    ],
+    "file": "src\\components\\ui\\sidebar.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 2209
+    }
+  },
+  {
+    "x_range": [
+      1435,
+      1469
+    ],
+    "file": "src\\components\\ui\\skeleton.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 45
+    }
+  },
+  {
+    "x_range": [
+      1470,
+      1504
+    ],
+    "file": "src\\components\\ui\\sonner.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 145
+    }
+  },
+  {
+    "x_range": [
+      1505,
+      1539
+    ],
+    "file": "src\\components\\ui\\table.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 311
+    }
+  },
+  {
+    "x_range": [
+      1540,
+      1574
+    ],
+    "file": "src\\components\\ui\\tabs.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 178
+    }
+  },
+  {
+    "x_range": [
+      1575,
+      1609
+    ],
+    "file": "src\\components\\ui\\textarea.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 50
+    }
+  },
+  {
+    "x_range": [
+      1610,
+      1644
+    ],
+    "file": "src\\components\\ui\\theme-toggle.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 167
+    }
+  },
+  {
+    "x_range": [
+      1645,
+      1679
+    ],
+    "file": "src\\components\\ui\\toggle-group.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 245
+    }
+  },
+  {
+    "x_range": [
+      1680,
+      1714
+    ],
+    "file": "src\\components\\ui\\toggle.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 128
+    }
+  },
+  {
+    "x_range": [
+      1715,
+      1749
+    ],
+    "file": "src\\components\\ui\\tooltip.tsx",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 204
+    }
+  },
+  {
+    "x_range": [
+      1750,
+      1784
+    ],
+    "file": "src\\hooks\\use-mobile.ts",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 102
+    }
+  },
+  {
+    "x_range": [
+      1785,
+      1819
+    ],
+    "file": "src\\lib\\auth-client.ts",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 27
+    }
+  },
+  {
+    "x_range": [
+      1820,
+      1854
+    ],
+    "file": "src\\lib\\auth.ts",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 158
+    }
+  },
+  {
+    "x_range": [
+      1855,
+      1889
+    ],
+    "file": "src\\lib\\encryption-config.ts",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 83
+    }
+  },
+  {
+    "x_range": [
+      1890,
+      1924
+    ],
+    "file": "src\\lib\\env.ts",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 124
+    }
+  },
+  {
+    "x_range": [
+      1925,
+      1959
+    ],
+    "file": "src\\lib\\prisma.ts",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 1094
+    }
+  },
+  {
+    "x_range": [
+      1960,
+      1994
+    ],
+    "file": "src\\lib\\resend.ts",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 24
+    }
+  },
+  {
+    "x_range": [
+      1995,
+      2029
+    ],
+    "file": "src\\lib\\utils.ts",
+    "metadata": {
+      "type": "LOGIC",
+      "nodeCount": 32
+    }
+  }
+]
