@@ -77,89 +77,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
   try {
     switch (name) {
-      case "get_project_spectrogram": {
-        const rootDir = path.resolve(args?.directoryPath as string);
-
-        // Ensure outputDir is distinct and excluded from future scans via .sonicignore if needed
-        // For the MCP server, we'll use a local 'mcp_output' folder
-        const outputDir = path.join(process.cwd(), "mcp_output");
-        if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
-
-        const results = scanDirectory(rootDir);
-        const { pngPath, mappingTable } = await generateProjectSpectrogram(results, outputDir);
-
-        if (!pngPath) {
-          throw new Error("Failed to generate spectrogram: No files found.");
-        }
-
-        const pngBase64 = fs.readFileSync(pngPath).toString("base64");
-        const nodeCount = results.reduce((acc, r) => acc + r.nodes.length, 0);
-
-        return {
-          content: [
-            {
-              type: "text",
-              text: `🎵 Project Encoded. Scanned ${results.length} files (${nodeCount} nodes).`,
-            },
-            {
-              type: "image",
-              data: pngBase64,
-              mimeType: "image/png"
-            },
-            {
-              type: "text",
-              text: `Mapping Table: ${JSON.stringify(mappingTable)}`
-            }
-          ],
-        };
-      }
-
-      case "resolve_sonic_coordinates": {
-        const { x, y, directoryPath } = args as { x: number; y: number; directoryPath: string };
-        const mappingPath = path.join(process.cwd(), "mcp_output", "mapping_table.json");
-
-        const resolution = resolveCoordinates(x, y, mappingPath, path.resolve(directoryPath));
-
-        if (!resolution) {
-          throw new Error("Could not resolve coordinates.");
-        }
-
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(resolution),
-            },
-          ],
-        };
-      }
-
-      case "get_code_snippet": {
-        const { filePath, lineNumber, directoryPath } = args as { filePath: string; lineNumber: number; directoryPath: string };
-        const absPath = path.join(path.resolve(directoryPath), filePath);
-
-        if (!fs.existsSync(absPath)) throw new Error(`File not found: ${filePath}`);
-
-        const lines = fs.readFileSync(absPath, "utf-8").split("\n");
-        const start = Math.max(0, lineNumber - 10);
-        const end = Math.min(lines.length, start + 20);
-        const snippet = lines.slice(start, end).map((l, i) => `${start + i + 1} | ${l}`).join("\n");
-
-        return {
-          content: [
-            {
-              type: "text",
-              text: `\`\`\`typescript\n// ${filePath}\n${snippet}\n\`\`\``,
-            },
-          ],
-        };
-      }
-
+      case "get_project_spectrogram":
+        return await handleGetProjectSpectrogram(args);
+      case "resolve_sonic_coordinates":
+        return await handleResolveCoordinates(args);
+      case "get_code_snippet":
+        return await handleGetCodeSnippet(args);
       default:
         throw new Error(`Unknown tool: ${name}`);
     }
   } catch (error) {
-    // CRITICAL: Always use console.error for logs in an MCP stdio server
     console.error(`💥 Tool Error [${name}]:`, error);
     return {
       content: [
@@ -172,6 +99,81 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     };
   }
 });
+
+async function handleGetProjectSpectrogram(args: any) {
+  const rootDir = path.resolve(args?.directoryPath as string);
+  const outputDir = path.join(process.cwd(), "mcp_output");
+  if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
+
+  const results = scanDirectory(rootDir);
+  const { pngPath, mappingTable } = await generateProjectSpectrogram(results, outputDir);
+
+  if (!pngPath) {
+    throw new Error("Failed to generate spectrogram: No files found.");
+  }
+
+  const pngBase64 = fs.readFileSync(pngPath).toString("base64");
+  const nodeCount = results.reduce((acc, r) => acc + r.nodes.length, 0);
+
+  return {
+    content: [
+      {
+        type: "text",
+        text: `🎵 Project Encoded. Scanned ${results.length} files (${nodeCount} nodes).`,
+      },
+      {
+        type: "image",
+        data: pngBase64,
+        mimeType: "image/png"
+      },
+      {
+        type: "text",
+        text: `Mapping Table: ${JSON.stringify(mappingTable)}`
+      }
+    ],
+  };
+}
+
+async function handleResolveCoordinates(args: any) {
+  const { x, y, directoryPath } = args as { x: number; y: number; directoryPath: string };
+  const mappingPath = path.join(process.cwd(), "mcp_output", "mapping_table.json");
+
+  const resolution = resolveCoordinates(x, y, mappingPath, path.resolve(directoryPath));
+
+  if (!resolution) {
+    throw new Error("Could not resolve coordinates.");
+  }
+
+  return {
+    content: [
+      {
+        type: "text",
+        text: JSON.stringify(resolution),
+      },
+    ],
+  };
+}
+
+async function handleGetCodeSnippet(args: any) {
+  const { filePath, lineNumber, directoryPath } = args as { filePath: string; lineNumber: number; directoryPath: string };
+  const absPath = path.join(path.resolve(directoryPath), filePath);
+
+  if (!fs.existsSync(absPath)) throw new Error(`File not found: ${filePath}`);
+
+  const lines = fs.readFileSync(absPath, "utf-8").split("\n");
+  const start = Math.max(0, lineNumber - 10);
+  const end = Math.min(lines.length, start + 20);
+  const snippet = lines.slice(start, end).map((l, i) => `${start + i + 1} | ${l}`).join("\n");
+
+  return {
+    content: [
+      {
+        type: "text",
+        text: `\`\`\`typescript\n// ${filePath}\n${snippet}\n\`\`\``,
+      },
+    ],
+  };
+}
 
 async function runServer() {
   const transport = new StdioServerTransport();

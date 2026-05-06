@@ -99,17 +99,55 @@ export function scanCode(sourceCode: string, fileName: string, layerName: keyof 
     return "Other";
   }
 
+  const complexityCache = new WeakMap<ts.Node, number>();
+
   function calculateComplexity(node: ts.Node): number {
-    let complexity = 1;
-    node.forEachChild(child => {
-      if (ts.isIfStatement(child) || ts.isConditionalExpression(child) || ts.isBinaryExpression(child) || ts.isIterationStatement(child, true)) complexity += 1;
+    if (complexityCache.has(node)) return complexityCache.get(node)!;
+
+    let branchPoints = 0;
+    if (
+      ts.isIfStatement(node) ||
+      ts.isConditionalExpression(node) ||
+      node.kind === ts.SyntaxKind.ForStatement ||
+      node.kind === ts.SyntaxKind.ForInStatement ||
+      node.kind === ts.SyntaxKind.ForOfStatement ||
+      node.kind === ts.SyntaxKind.WhileStatement ||
+      node.kind === ts.SyntaxKind.DoStatement
+    ) {
+      branchPoints = 1;
+    } else if (ts.isBinaryExpression(node)) {
+      const op = node.operatorToken.kind;
+      if (
+        op === ts.SyntaxKind.AmpersandAmpersandToken ||
+        op === ts.SyntaxKind.BarBarToken ||
+        op === ts.SyntaxKind.QuestionQuestionToken
+      ) {
+        branchPoints = 1;
+      }
+    }
+
+    ts.forEachChild(node, (child) => {
+      branchPoints += (calculateComplexity(child) - 1);
     });
-    return complexity;
+
+    const result = 1 + branchPoints;
+    complexityCache.set(node, result);
+    return result;
   }
 
   function visit(node: ts.Node, depth: number) {
-    const text = node.getText();
-    const isAnomaly = text.includes(": any") || node.kind === ts.SyntaxKind.Unknown;
+    // Noise Reduction: Skip trivial structural nodes
+    if (node.kind === ts.SyntaxKind.EndOfFileToken || node.kind === ts.SyntaxKind.OpenParenToken || node.kind === ts.SyntaxKind.CloseParenToken) return;
+
+    let isAnomaly = node.kind === ts.SyntaxKind.Unknown;
+    
+    // Semantic Anomaly detection for ': any'
+    if (!isAnomaly && (ts.isVariableDeclaration(node) || ts.isParameter(node) || ts.isPropertyDeclaration(node))) {
+      const typeNode = (node as { type?: ts.TypeNode }).type;
+      if (typeNode && typeNode.kind === ts.SyntaxKind.AnyKeyword) {
+        isAnomaly = true;
+      }
+    }
     let hz: number;
     let amplitude: number = Math.max(0.1, 1.0 - (depth * 0.15));
     let isComplexityGrowl = false;

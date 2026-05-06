@@ -2,7 +2,7 @@ import { PNG } from "pngjs";
 import * as fs from "fs";
 import * as path from "path";
 import { SPECTROGRAM_CONFIG, HOLOGRAPHIC_LAYERS } from "./constants";
-import { FileScanResult } from "./scanner";
+import type { FileScanResult } from "./scanner";
 
 export interface MappingEntry {
   x_range: [number, number];
@@ -10,6 +10,7 @@ export interface MappingEntry {
   metadata: {
     type: string;
     nodeCount: number;
+    maxLine: number;
   };
 }
 
@@ -21,9 +22,9 @@ export async function generateProjectSpectrogram(results: FileScanResult[], outp
   // Dark "Ambient" background
   for (let i = 0; i < png.data.length; i += 4) {
     png.data[i] = 5;
-    png.data[i+1] = 5;
-    png.data[i+2] = 15;
-    png.data[i+3] = 255;
+    png.data[i + 1] = 5;
+    png.data[i + 2] = 15;
+    png.data[i + 3] = 255;
   }
 
   const totalFiles = results.length;
@@ -33,21 +34,23 @@ export async function generateProjectSpectrogram(results: FileScanResult[], outp
 
   results.forEach((result, fileIdx) => {
     const xStart = fileIdx * slotWidth;
-    const xEnd = (fileIdx + 1) * slotWidth - 1; 
-    
+    const xEnd = (fileIdx + 1) * slotWidth - 1;
+
+    const maxLine = Math.max(...result.nodes.map(n => n.line), 1);
+
     mappingTable.push({
       x_range: [xStart, xEnd],
       file: result.fileName,
       metadata: {
         type: result.layer,
-        nodeCount: result.nodes.length
+        nodeCount: result.nodes.length,
+        maxLine
       }
     });
 
-    const maxLine = Math.max(...result.nodes.map(n => n.line), 1);
-
     for (const node of result.nodes) {
-      const xOffset = Math.floor((node.line / maxLine) * (slotWidth - 2));
+      const divisor = Math.max(1, slotWidth - 2);
+      const xOffset = Math.floor((node.line / maxLine) * divisor);
       const x = xStart + xOffset;
       const y = HEIGHT - 1 - Math.floor((node.hz / MAX_HZ) * (HEIGHT - 1));
 
@@ -59,10 +62,10 @@ export async function generateProjectSpectrogram(results: FileScanResult[], outp
       if (node.isComplexityGrowl) {
         r = 255; g = 30; b = 30;
         for (let sx = -2; sx <= 2; sx++) {
-            const sidx = (WIDTH * y + (x + sx)) << 2;
-            if (sidx >= 0 && sidx < png.data.length) {
-                png.data[sidx] = Math.min(255, png.data[sidx] + 150 * node.amplitude);
-            }
+          const sidx = (WIDTH * y + (x + sx)) << 2;
+          if (sidx >= 0 && sidx < png.data.length) {
+            png.data[sidx] = Math.min(255, (png.data[sidx] ?? 0) + 150 * node.amplitude);
+          }
         }
       } else if (node.hz >= HOLOGRAPHIC_LAYERS.ANOMALY.min) {
         r = 255; g = 0; b = 255;
@@ -74,9 +77,9 @@ export async function generateProjectSpectrogram(results: FileScanResult[], outp
         r = 50; g = 255; b = 150;
       }
 
-      png.data[idx] = Math.min(255, png.data[idx] + r * node.amplitude);
-      png.data[idx + 1] = Math.min(255, png.data[idx + 1] + g * node.amplitude);
-      png.data[idx + 2] = Math.min(255, png.data[idx + 2] + b * node.amplitude);
+      png.data[idx] = Math.min(255, (png.data[idx] ?? 0) + r * node.amplitude);
+      png.data[idx + 1] = Math.min(255, (png.data[idx + 1] ?? 0) + g * node.amplitude);
+      png.data[idx + 2] = Math.min(255, (png.data[idx + 2] ?? 0) + b * node.amplitude);
     }
 
     const silentX = xEnd + 1;
@@ -84,8 +87,8 @@ export async function generateProjectSpectrogram(results: FileScanResult[], outp
       for (let sy = 0; sy < HEIGHT; sy++) {
         const sidx = (WIDTH * sy + silentX) << 2;
         png.data[sidx] = 0;
-        png.data[sidx+1] = 0;
-        png.data[sidx+2] = 0;
+        png.data[sidx + 1] = 0;
+        png.data[sidx + 2] = 0;
       }
     }
   });

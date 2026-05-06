@@ -18,13 +18,20 @@ async function main() {
     const coordsIndex = args.indexOf("--coords");
     const issueIndex = args.indexOf("--issue");
     
-    if (coordsIndex === -1 || !args[coordsIndex + 1]) {
+    const coordsValue = args[coordsIndex + 1];
+    if (coordsIndex === -1 || !coordsValue) {
       console.error("❌ Missing --coords 'x,y'");
       process.exit(1);
     }
 
-    const [x, y] = args[coordsIndex + 1].split(",").map(Number);
-    const issue = issueIndex !== -1 ? args[issueIndex + 1] : "General fix";
+    const [x, y] = coordsValue.split(",").map(Number);
+    if (x === undefined || y === undefined || isNaN(x) || isNaN(y)) {
+      console.error("❌ Invalid --coords format. Use 'x,y' (e.g., 150,400)");
+      process.exit(1);
+    }
+
+    const issueValue = issueIndex !== -1 ? args[issueIndex + 1] : null;
+    const issue = issueValue ?? "General fix";
 
     console.log(`🎯 Initializing Surgical Strike at [${x}, ${y}]...`);
     const resolution = resolveCoordinates(x, y, mappingTablePath, process.cwd());
@@ -51,8 +58,9 @@ async function main() {
   const targetDir = args.find(arg => !arg.startsWith("-"));
   const manualExclusions: string[] = [];
   args.forEach((arg, i) => {
-    if ((arg === "--exclude" || arg === "-e") && args[i + 1]) {
-      manualExclusions.push(args[i + 1]);
+    const nextArg = args[i + 1];
+    if ((arg === "--exclude" || arg === "-e") && nextArg) {
+      manualExclusions.push(nextArg);
     }
   });
 

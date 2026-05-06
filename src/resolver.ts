@@ -27,17 +27,14 @@ export function resolveCoordinates(
   // 2. Estimate the line number
   // Since we map lines linearly to X within the slot:
   const xInSlot = x - entry.x_range[0];
-  const slotWidth = entry.x_range[1] - entry.x_range[0];
+  const slotWidth = entry.x_range[1] - entry.x_range[0] + 1;
+  const maxLine = (entry.metadata as any).maxLine || 1;
   
-  // We need the total line count to be accurate
-  const fileContent = fs.readFileSync(absoluteFilePath, "utf-8");
-  const lines = fileContent.split("\n");
-  const totalLines = lines.length;
-  
-  const estimatedLine = Math.floor((xInSlot / slotWidth) * totalLines);
+  // Safeguard against division by zero for very narrow slots
+  const divisor = Math.max(1, slotWidth - 2);
+  const estimatedLine = Math.floor((xInSlot / divisor) * maxLine);
   
   // 3. Refine using Y (Frequency)
-  // Logic layer is usually bottom. Hz = HEIGHT - 1 - y * MAX_HZ / HEIGHT
   const hz = ((SPECTROGRAM_CONFIG.HEIGHT - 1 - y) / (SPECTROGRAM_CONFIG.HEIGHT - 1)) * SPECTROGRAM_CONFIG.MAX_HZ;
   
   // Check if it's an Anomaly or a specific logic type
@@ -49,6 +46,9 @@ export function resolveCoordinates(
   }
 
   // 4. Extract JIT Context
+  const content = fs.readFileSync(absoluteFilePath, "utf-8");
+  const lines = content.split("\n");
+  const totalLines = lines.length;
   const windowSize = SPECTROGRAM_CONFIG.CONTEXT_WINDOW;
   const startLine = Math.max(0, estimatedLine - Math.floor(windowSize / 2));
   const endLine = Math.min(totalLines, startLine + windowSize);
