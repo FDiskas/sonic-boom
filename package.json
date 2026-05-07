@@ -1,11 +1,24 @@
 {
-  "name": "sonic-boom",
-  "module": "index.ts",
+  "name": "sonic-boom-mcp",
+  "version": "1.0.0",
+  "description": "Sonic Code Sentinel MCP Server - Visualizing codebases as spectrograms",
   "type": "module",
-  "private": true,
+  "private": false,
+  "main": "./dist/mcp-server.js",
+  "types": "./dist/src/mcp-server.d.ts",
+  "bin": {
+    "sonic-boom": "./dist/index.js",
+    "sonic-boom-mcp": "./dist/mcp-server.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "start": "bun src/mcp-server.ts",
-    "scan": "bun src/index.ts"
+    "scan": "bun src/index.ts",
+    "build": "bun build src/index.ts src/mcp-server.ts --outdir ./dist --target node && tsc --emitDeclarationOnly --declaration --noEmit false",
+    "prepublishOnly": "bun run build"
   },
   "devDependencies": {
     "@types/bun": "latest"

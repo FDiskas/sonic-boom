@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { scanDirectory } from "./scanner";
 import { generateProjectSpectrogram } from "./generator";
 import { resolveCoordinates } from "./resolver";
