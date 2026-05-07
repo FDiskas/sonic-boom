@@ -94,8 +94,11 @@ To use with Claude Desktop or other MCP clients, add this to your config:
 {
   "mcpServers": {
     "sonic-boom": {
-      "command": "bun",
-      "args": ["run", "/path/to/sonic-boom/src/mcp-server.ts"]
+      "command": "npx",
+      "args": [
+        "-y",
+        "sonic-boom-mcp@latest"
+      ]
     }
   }
 }
