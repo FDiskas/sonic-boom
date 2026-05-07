@@ -1,26 +1,26 @@
 {
   "name": "sonic-boom-mcp",
-  "version": "1.0.1",
+  "version": "1.0.4",
   "description": "Sonic Code Sentinel MCP Server - Visualizing codebases as spectrograms",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/FDiskas/sonic-boom.git"
+    "url": "https://github.com/FDiskas/sonic-boom"
   },
-  "homepage": "https://github.com/FDiskas/sonic-boom#readme",
+  "homepage": "https://github.com/FDiskas/sonic-boom",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "bugs": {
     "url": "https://github.com/FDiskas/sonic-boom/issues"
   },
   "private": false,
   "main": "./dist/mcp-server.js",
-  "types": "./dist/src/mcp-server.d.ts",
+  "types": "./dist/mcp-server.d.ts",
   "bin": {
-    "sonic-boom": "./dist/index.js",
-    "sonic-boom-mcp": "./dist/mcp-server.js"
+    "sonic-boom": "dist/index.js",
+    "sonic-boom-mcp": "dist/mcp-server.js"
   },
   "files": [
-    "dist",
-    "README.md"
+    "dist"
   ],
   "scripts": {
     "start": "bun src/mcp-server.ts",

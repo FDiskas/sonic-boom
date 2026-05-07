@@ -1,4 +1,4 @@
-# 📡 Sonic Code Sentinel (sonic-boom)
+# Sonic Code Sentinel (sonic-boom)
 
 [![Bun](https://img.shields.io/badge/Bun-%23000000.svg?style=flat&logo=bun&logoColor=white)](https://bun.sh)
 [![TypeScript](https://img.shields.io/badge/TypeScript-%23007ACC.svg?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -119,4 +119,13 @@ The tool generates a diagnostic bundle in the `./output` directory:
 - **`mapping_table.json`**: Metadata used by the `resolver` to map pixels to code.
 
 **Sonic Code Sentinel** — *Hear the code. See the bugs.*
+
+---
+
+## 📄 License
+This project is licensed under the **PolyForm Noncommercial License 1.0.0**. 
+
+- **Free for Personal/Non-commercial use**: You are free to use, modify, and distribute this software for personal projects, research, and hobbyist pursuits.
+- **Commercial Use**: Any use for profit-seeking purposes requires a separate commercial license. Please contact the author for details.
+
 
