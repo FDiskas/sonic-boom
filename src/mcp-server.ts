@@ -13,13 +13,30 @@ import { generateProjectSpectrogram } from "./generator";
 import { resolveCoordinates } from "./resolver";
 import { HOLOGRAPHIC_LAYERS } from "./constants";
 
+const pkgPath = path.join(import.meta.dirname, "../package.json");
+const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+
+const args = process.argv.slice(2);
+if (args.includes("--help") || args.includes("-h")) {
+  console.log(`🎵 Sonic Code Sentinel MCP Server v${pkg.version}`);
+  console.log("\nUsage:");
+  console.log("  npx sonic-boom-mcp");
+  console.log("\nThis is an MCP server and should be configured in your MCP client (e.g., Claude Desktop).");
+  process.exit(0);
+}
+
+if (args.includes("--version") || args.includes("-v")) {
+  console.log(`v${pkg.version}`);
+  process.exit(0);
+}
+
 const DATA_DIR = path.join(os.tmpdir(), "sonic-boom-mcp");
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const server = new Server(
   {
     name: "sonic-code-sentinel",
-    version: "1.0.0",
+    version: pkg.version,
   },
   {
     capabilities: {

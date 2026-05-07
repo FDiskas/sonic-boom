@@ -7,6 +7,19 @@ import * as path from "path";
 
 async function main() {
   const args = process.argv.slice(2);
+  
+  if (args.includes("--version") || args.includes("-v")) {
+    const pkgPath = path.join(import.meta.dirname, "../package.json");
+    const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+    console.log(`🎵 Sonic Code Sentinel v${pkg.version}`);
+    process.exit(0);
+  }
+
+  if (args.includes("--help") || args.includes("-h")) {
+    printHelp();
+    process.exit(0);
+  }
+
   if (args.length === 0) {
     printHelp();
     process.exit(1);
@@ -85,10 +98,16 @@ async function main() {
 }
 
 function printHelp() {
-  console.log("🎵 Sonic Code Sentinel CLI");
-  console.log("Usage:");
-  console.log("  bun run src/index.ts <dir> [--exclude <pattern>]");
-  console.log("  bun run src/index.ts fix --coords <x,y> [--issue <description>]");
+  const pkgPath = path.join(import.meta.dirname, "../package.json");
+  const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
+  console.log(`🎵 Sonic Code Sentinel v${pkg.version}`);
+  console.log("\nUsage:");
+  console.log("  npx sonic-boom <dir> [--exclude <pattern>]");
+  console.log("  npx sonic-boom fix --coords <x,y> [--issue <description>]");
+  console.log("\nOptions:");
+  console.log("  --version, -v  Show version");
+  console.log("  --help, -h     Show help");
+  console.log("  --exclude, -e  Exclude patterns during scan");
 }
 
 main().catch(err => {

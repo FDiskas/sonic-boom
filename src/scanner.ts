@@ -27,19 +27,13 @@ export interface FileScanResult {
 export function scanDirectory(rootDir: string, manualExclusions: string[] = []): FileScanResult[] {
   const results: FileScanResult[] = [];
   const absoluteRoot = path.resolve(rootDir);
-  const ig = ignore();
-  
-  const ignoreFiles = [".gitignore", ".dockerignore", ".sonicignore"];
-  ignoreFiles.forEach(file => {
-    const filePath = path.join(absoluteRoot, file);
-    if (fs.existsSync(filePath)) ig.add(fs.readFileSync(filePath, "utf-8"));
-  });
 
-  ig.add(["node_modules", ".git", "output", "dist", ".next", "out", "build"]);
-  if (manualExclusions.length > 0) ig.add(manualExclusions);
+  const baseIg = ignore();
+  baseIg.add(["node_modules", ".git", "output", "dist", ".next", "out", "build"]);
+  if (manualExclusions.length > 0) baseIg.add(manualExclusions);
 
-  const files = getAllFiles(absoluteRoot, absoluteRoot, ig);
-  
+  const files = getAllFiles(absoluteRoot, [{ base: absoluteRoot, ig: baseIg }]);
+
   // Project-wide context
   const testFiles = new Set(files.filter(f => f.includes(".test.") || f.includes(".spec.")).map(f => path.basename(f).split('.')[0]));
 
@@ -58,16 +52,16 @@ export function scanDirectory(rootDir: string, manualExclusions: string[] = []):
 
     try {
       const content = fs.readFileSync(file, "utf-8");
-      const relativePath = path.relative(absoluteRoot, file);
+      const relativePath = path.relative(absoluteRoot, file).replace(/\\/g, '/');
       const baseName = path.basename(file).split('.')[0];
       const hasTest = testFiles.has(baseName);
-      
+
       const nodes = scanCode(content, relativePath, layer, { hasTest, rootDir: absoluteRoot });
-      
+
       if (nodes.length > 0) {
-        results.push({ 
-          fileName: relativePath, 
-          nodes, 
+        results.push({
+          fileName: relativePath,
+          nodes,
           layer,
           stats: {
             lineCount: content.split('\n').length,
@@ -82,13 +76,30 @@ export function scanDirectory(rootDir: string, manualExclusions: string[] = []):
   return results;
 }
 
-function getAllFiles(dirPath: string, rootDir: string, ig: ReturnType<typeof ignore>, arrayOfFiles: string[] = []): string[] {
-  const files = fs.readdirSync(dirPath);
-  files.forEach((file) => {
+interface IgnoreScope {
+  base: string;
+  ig: ReturnType<typeof ignore>;
+}
+
+function getAllFiles(dirPath: string, igStack: IgnoreScope[], arrayOfFiles: string[] = []): string[] {
+  const patterns = [".gitignore", ".npmignore", ".dockerignore", ".sonicignore", ".eslintignore", ".prettierignore", ".vscode", ".idea", ".gcloudignore"]
+    .map(name => path.join(dirPath, name))
+    .filter(p => fs.existsSync(p))
+    .map(p => fs.readFileSync(p, "utf-8"))
+    .join("\n");
+
+  const stack = patterns ? [...igStack, { base: dirPath, ig: ignore().add(patterns) }] : igStack;
+
+  fs.readdirSync(dirPath).forEach(file => {
     const fullPath = path.join(dirPath, file);
-    const relativePath = path.relative(rootDir, fullPath);
-    if (ig.ignores(relativePath)) return;
-    if (fs.statSync(fullPath).isDirectory()) getAllFiles(fullPath, rootDir, ig, arrayOfFiles);
+    const isDir = fs.statSync(fullPath).isDirectory();
+    const isIgnored = stack.some(s => {
+      const rel = path.relative(s.base, fullPath).replace(/\\/g, "/");
+      return s.ig.ignores(isDir ? `${rel}/` : rel);
+    });
+
+    if (isIgnored) return;
+    if (isDir) getAllFiles(fullPath, stack, arrayOfFiles);
     else arrayOfFiles.push(fullPath);
   });
   return arrayOfFiles;
@@ -108,37 +119,37 @@ export function scanCode(sourceCode: string, fileName: string, layerName: keyof 
   // File-level checks
   const lineCount = sourceCode.split('\n').length;
   if (lineCount > SPECTROGRAM_CONFIG.MAX_COMPONENT_LINES && (fileName.endsWith('.tsx') || fileName.endsWith('.jsx'))) {
-    nodes.push({ 
-      hz: HOLOGRAPHIC_LAYERS.ANOMALY.min + 500, 
-      amplitude: 1.0, 
-      line: 0, 
-      column: 0, 
-      type: "File", 
-      anomalyType: `Massive Component (${lineCount} lines)` 
+    nodes.push({
+      hz: HOLOGRAPHIC_LAYERS.ANOMALY.min + 500,
+      amplitude: 1.0,
+      line: 0,
+      column: 0,
+      type: "File",
+      anomalyType: `Massive Component (${lineCount} lines)`
     });
   }
 
   if (!context.hasTest && !fileName.includes('.test.') && !fileName.includes('.spec.') && layerName === 'LOGIC') {
-    nodes.push({ 
-      hz: HOLOGRAPHIC_LAYERS.ANOMALY.min + 1000, 
-      amplitude: 0.8, 
-      line: 0, 
-      column: 0, 
-      type: "File", 
-      anomalyType: "Missing Test File" 
+    nodes.push({
+      hz: HOLOGRAPHIC_LAYERS.ANOMALY.min + 1000,
+      amplitude: 0.8,
+      line: 0,
+      column: 0,
+      type: "File",
+      anomalyType: "Missing Test File"
     });
   }
 
   if (fileName.endsWith('index.ts') || fileName.endsWith('index.js')) {
     const exportCount = (sourceCode.match(/export /g) || []).length;
     if (exportCount > 10) {
-      nodes.push({ 
-        hz: HOLOGRAPHIC_LAYERS.ANOMALY.min + 1500, 
-        amplitude: 0.7, 
-        line: 0, 
-        column: 0, 
-        type: "File", 
-        anomalyType: `Heavy Barrel Export (${exportCount} exports)` 
+      nodes.push({
+        hz: HOLOGRAPHIC_LAYERS.ANOMALY.min + 1500,
+        amplitude: 0.7,
+        line: 0,
+        column: 0,
+        type: "File",
+        anomalyType: `Heavy Barrel Export (${exportCount} exports)`
       });
     }
   }
@@ -200,7 +211,7 @@ export function scanCode(sourceCode: string, fileName: string, layerName: keyof 
 
     let isAnomaly = node.kind === ts.SyntaxKind.Unknown;
     let anomalyType: string | undefined;
-    
+
     // 1. Explicit Any
     if (!isAnomaly && (ts.isVariableDeclaration(node) || ts.isParameter(node) || ts.isPropertyDeclaration(node))) {
       const typeNode = (node as { type?: ts.TypeNode }).type;
@@ -289,11 +300,11 @@ export function scanCode(sourceCode: string, fileName: string, layerName: keyof 
       amplitude = 1.0;
     } else {
       // Only check complexity for "major" blocks to avoid noise
-      const isMajorBlock = ts.isFunctionDeclaration(node) || 
-                          ts.isMethodDeclaration(node) || 
-                          ts.isArrowFunction(node) || 
-                          ts.isClassDeclaration(node);
-                          
+      const isMajorBlock = ts.isFunctionDeclaration(node) ||
+        ts.isMethodDeclaration(node) ||
+        ts.isArrowFunction(node) ||
+        ts.isClassDeclaration(node);
+
       if (isMajorBlock) {
         const complexity = calculateComplexity(node);
         if (complexity > SPECTROGRAM_CONFIG.COMPLEXITY_THRESHOLD || depth > SPECTROGRAM_CONFIG.NESTING_THRESHOLD) {
@@ -301,7 +312,7 @@ export function scanCode(sourceCode: string, fileName: string, layerName: keyof 
           amplitude = 1.0;
         }
       }
-      
+
       const typeOffset = NODE_TYPE_OFFSETS[nodeType] || 0;
       hz = layer.min + typeOffset; // Remove complexity from Hz to keep bands clean
       hz = Math.min(hz, layer.max - 1);
