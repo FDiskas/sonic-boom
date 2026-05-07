@@ -18,31 +18,44 @@ export function resolveCoordinates(
   const mappingTable = JSON.parse(fs.readFileSync(mappingTablePath, "utf-8"));
   
   // 1. Find the file segment using X
-  const entry = mappingTable.find((e: any) => x >= e.x_range[0] && x <= e.x_range[1]);
+  const entry = mappingTable.find((e: any) => x >= e.xr[0] && x <= e.xr[1]);
   if (!entry) return null;
 
-  const absoluteFilePath = path.join(rootDir, entry.file);
+  const absoluteFilePath = path.join(rootDir, entry.f);
   if (!fs.existsSync(absoluteFilePath)) return null;
 
   // 2. Estimate the line number
-  // Since we map lines linearly to X within the slot:
-  const xInSlot = x - entry.x_range[0];
-  const slotWidth = entry.x_range[1] - entry.x_range[0] + 1;
-  const maxLine = (entry.metadata as any).maxLine || 1;
+  const xInSlot = x - entry.xr[0];
+  const slotWidth = entry.xr[1] - entry.xr[0] + 1;
+  const maxLine = entry.ml || 1;
   
-  // Safeguard against division by zero for very narrow slots
   const divisor = Math.max(1, slotWidth - 2);
   const estimatedLine = Math.floor((xInSlot / divisor) * maxLine);
   
-  // 3. Refine using Y (Frequency)
+  // 3. Refine using Y (Frequency) and Metadata
   const hz = ((SPECTROGRAM_CONFIG.HEIGHT - 1 - y) / (SPECTROGRAM_CONFIG.HEIGHT - 1)) * SPECTROGRAM_CONFIG.MAX_HZ;
   
-  // Check if it's an Anomaly or a specific logic type
-  let detectedType = "Unknown";
-  if (hz >= HOLOGRAPHIC_LAYERS.ANOMALY.min) {
+  // Find the closest anomaly in this file to the estimated line and frequency
+  const anomalies = entry.an || [];
+  let detectedType = entry.t;
+  let closestAnomaly = null;
+  let minDistance = Infinity;
+
+  for (const anomaly of anomalies) {
+    const lineDist = Math.abs(anomaly.l - estimatedLine);
+    const hzDist = Math.abs(anomaly.h - hz) / 100; // Normalize frequency distance
+    const dist = Math.sqrt(lineDist * lineDist + hzDist * hzDist);
+    
+    if (dist < minDistance && dist < 50) { // Only snap if reasonably close
+      minDistance = dist;
+      closestAnomaly = anomaly;
+    }
+  }
+
+  if (closestAnomaly) {
+    detectedType = closestAnomaly.t;
+  } else if (hz >= HOLOGRAPHIC_LAYERS.ANOMALY.min) {
     detectedType = "Anomaly/Error";
-  } else {
-    detectedType = entry.metadata.type;
   }
 
   // 4. Extract JIT Context
@@ -60,7 +73,7 @@ export function resolveCoordinates(
   });
 
   const context = `
-File: ${entry.file}
+File: ${entry.f}
 Line: ${estimatedLine + 1}
 Type: ${detectedType}
 

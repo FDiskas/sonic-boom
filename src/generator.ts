@@ -5,13 +5,12 @@ import { SPECTROGRAM_CONFIG, HOLOGRAPHIC_LAYERS } from "./constants";
 import type { FileScanResult } from "./scanner";
 
 export interface MappingEntry {
-  x_range: [number, number];
-  file: string;
-  metadata: {
-    type: string;
-    nodeCount: number;
-    maxLine: number;
-  };
+  xr: [number, number]; // x_range
+  f: string;           // file
+  t: string;           // type
+  nc: number;          // nodeCount
+  ml: number;          // maxLine
+  an: { l: number; h: number; t: string }[]; // anomalies
 }
 
 export async function generateProjectSpectrogram(results: FileScanResult[], outputDir: string) {
@@ -39,13 +38,24 @@ export async function generateProjectSpectrogram(results: FileScanResult[], outp
     const maxLine = Math.max(...result.nodes.map(n => n.line), 1);
 
     mappingTable.push({
-      x_range: [xStart, xEnd],
-      file: result.fileName,
-      metadata: {
-        type: result.layer,
-        nodeCount: result.nodes.length,
-        maxLine
-      }
+      xr: [xStart, xEnd],
+      f: result.fileName,
+      t: result.layer,
+      nc: result.nodes.length,
+      ml: maxLine,
+      an: Array.from(
+        result.nodes
+          .filter(n => n.isComplexityGrowl || n.anomalyType)
+          .reduce((map, n) => {
+            const type = n.isComplexityGrowl ? "High Complexity" : (n.anomalyType || "Anomaly");
+            const key = `${n.line}-${type}`;
+            if (!map.has(key)) {
+              map.set(key, { l: n.line, h: n.hz, t: type });
+            }
+            return map;
+          }, new Map<string, { l: number; h: number; t: string }>())
+          .values()
+      )
     });
 
     for (const node of result.nodes) {
@@ -100,7 +110,7 @@ export async function generateProjectSpectrogram(results: FileScanResult[], outp
     await new Promise<void>((resolve, reject) => {
       png.pack().pipe(fs.createWriteStream(pngPath)).on("finish", resolve).on("error", reject);
     });
-    fs.writeFileSync(tablePath, JSON.stringify(mappingTable, null, 2));
+    fs.writeFileSync(tablePath, JSON.stringify(mappingTable));
   } catch (err) {
     console.error(`💥 Disk Write Error: ${err}`);
     throw err;

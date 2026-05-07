@@ -7,9 +7,14 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import * as fs from "fs";
 import * as path from "path";
+import * as os from "os";
 import { scanDirectory } from "./scanner";
 import { generateProjectSpectrogram } from "./generator";
 import { resolveCoordinates } from "./resolver";
+import { HOLOGRAPHIC_LAYERS } from "./constants";
+
+const DATA_DIR = path.join(os.tmpdir(), "sonic-boom-mcp");
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const server = new Server(
   {
@@ -103,11 +108,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
 async function handleGetProjectSpectrogram(args: any) {
   const rootDir = path.resolve(args?.directoryPath as string);
-  const outputDir = path.join(process.cwd(), "mcp_output");
-  if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir, { recursive: true });
-
   const results = scanDirectory(rootDir);
-  const { pngPath, mappingTable } = await generateProjectSpectrogram(results, outputDir);
+  const { pngPath, mappingTable } = await generateProjectSpectrogram(results, DATA_DIR);
 
   if (!pngPath) {
     throw new Error("Failed to generate spectrogram: No files found.");
@@ -116,20 +118,31 @@ async function handleGetProjectSpectrogram(args: any) {
   const pngBase64 = fs.readFileSync(pngPath).toString("base64");
   const nodeCount = results.reduce((acc, r) => acc + r.nodes.length, 0);
 
+  const anomalies = results.filter(r => r.nodes.some(n => n.hz >= HOLOGRAPHIC_LAYERS.ANOMALY.min || n.isComplexityGrowl));
+  const anomalySummary = anomalies.slice(0, 10).map(a => {
+    const specificAnomalies = a.nodes
+      .filter(n => n.isComplexityGrowl || n.anomalyType)
+      .map(n => n.isComplexityGrowl ? "High Complexity" : n.anomalyType);
+    const uniqueTypes = Array.from(new Set(specificAnomalies));
+    return `- ${a.fileName} (${uniqueTypes.join(", ")})`;
+  }).join("\n");
+
   return {
     content: [
       {
         type: "text",
-        text: `🎵 Project Encoded. Scanned ${results.length} files (${nodeCount} nodes).`,
+        text: `🎵 Project Encoded. Scanned ${results.length} files (${nodeCount} nodes).\n\n` +
+          `### 🕵️ Anomaly Summary (Top 10):\n${anomalySummary || "No major anomalies detected."}\n\n` +
+          `### 🎨 Spectrogram Legend:\n` +
+          `- **Red Glows**: High Complexity/Deep Nesting (Actionable Hotspots)\n` +
+          `- **Magenta Dots**: Potential Bugs/Anomalies (e.g., ': any' usage)\n` +
+          `- **Green/Blue/Orange**: Logic/Styles/Markup layers\n\n` +
+          `**NOTE**: The mapping table is stored locally. Use 'resolve_sonic_coordinates' with (x, y) to inspect specific points.`
       },
       {
         type: "image",
         data: pngBase64,
         mimeType: "image/png"
-      },
-      {
-        type: "text",
-        text: `Mapping Table: ${JSON.stringify(mappingTable)}`
       }
     ],
   };
@@ -137,7 +150,7 @@ async function handleGetProjectSpectrogram(args: any) {
 
 async function handleResolveCoordinates(args: any) {
   const { x, y, directoryPath } = args as { x: number; y: number; directoryPath: string };
-  const mappingPath = path.join(process.cwd(), "mcp_output", "mapping_table.json");
+  const mappingPath = path.join(DATA_DIR, "mapping_table.json");
 
   const resolution = resolveCoordinates(x, y, mappingPath, path.resolve(directoryPath));
 
