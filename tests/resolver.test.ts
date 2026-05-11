@@ -7,16 +7,19 @@ import { generateProjectSpectrogram } from "../src/generator";
 import { resolveCoordinates } from "../src/resolver";
 import { SPECTROGRAM_CONFIG } from "../src/constants";
 
-const { HEIGHT, MAX_HZ } = SPECTROGRAM_CONFIG;
+const { HEIGHT, MAX_HZ, PLOT_TOP, PLOT_BOTTOM_MARGIN } = SPECTROGRAM_CONFIG;
+const PLOT_HEIGHT = HEIGHT - PLOT_TOP - PLOT_BOTTOM_MARGIN;
 
 // Generator's anomaly pixel placement, mirrored here so we can ask the
-// resolver to round-trip a specific (line, hz) we know was drawn.
+// resolver to round-trip a specific (line, hz) we know was drawn. Y math
+// is plot-relative because the spectrogram reserves a top banner and a
+// bottom file-index axis.
 function anomalyPixel(entry: any, line: number, hz: number) {
   const slotWidth = entry.xr[1] - entry.xr[0] + 1;
   const divisor = Math.max(1, slotWidth - 2);
   const maxLine = entry.ml || 1;
   const x = entry.xr[0] + Math.floor((line / maxLine) * divisor);
-  const y = HEIGHT - 1 - Math.floor((hz / MAX_HZ) * (HEIGHT - 1));
+  const y = PLOT_TOP + (PLOT_HEIGHT - 1) - Math.floor((hz / MAX_HZ) * (PLOT_HEIGHT - 1));
   return { x, y };
 }
 

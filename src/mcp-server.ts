@@ -11,6 +11,7 @@ import * as os from "os";
 import { scanDirectory } from "./scanner";
 import { generateProjectSpectrogram } from "./generator";
 import { resolveCoordinates } from "./resolver";
+import { ANOMALY_SHORT_CODE } from "./constants";
 
 const pkgPath = path.join(import.meta.dirname, "../package.json");
 const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
@@ -125,7 +126,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function handleGetProjectSpectrogram(args: any) {
   const rootDir = path.resolve(args?.directoryPath as string);
   const results = scanDirectory(rootDir);
-  const { pngPath, mappingTable } = await generateProjectSpectrogram(results, DATA_DIR);
+  const { pngPath } = await generateProjectSpectrogram(results, DATA_DIR);
 
   if (!pngPath) {
     throw new Error("Failed to generate spectrogram: No files found.");
@@ -135,22 +136,52 @@ async function handleGetProjectSpectrogram(args: any) {
   const nodeCount = results.reduce((acc, r) => acc + r.nodes.length, 0);
 
   const SEV_RANK: Record<string, number> = { high: 3, med: 2, low: 1 };
+
+  type FileSummary = {
+    file: string;
+    severity: string;
+    byCategory: Map<string, number[]>;
+    count: number;
+  };
+
   const anomalyFiles = results
-    .map(r => {
+    .map<FileSummary | null>(r => {
       const findings = r.nodes.filter(n => n.anomalyType || n.isComplexityGrowl);
       if (findings.length === 0) return null;
       const top = findings.reduce<string>((acc, n) => {
         const s = n.severity ?? "med";
         return (SEV_RANK[s] ?? 0) > (SEV_RANK[acc] ?? 0) ? s : acc;
       }, "low");
-      const uniqueTypes = Array.from(new Set(findings.map(n => n.anomalyType ?? "High Complexity")));
-      return { file: r.fileName, severity: top, types: uniqueTypes, count: findings.length };
+      const byCategory = new Map<string, number[]>();
+      for (const n of findings) {
+        const cat = n.anomalyCategory ?? "High Complexity";
+        const lines = byCategory.get(cat) ?? [];
+        lines.push(n.line + 1);
+        byCategory.set(cat, lines);
+      }
+      return { file: r.fileName, severity: top, byCategory, count: findings.length };
     })
-    .filter((x): x is { file: string; severity: string; types: string[]; count: number } => x !== null)
+    .filter((x): x is FileSummary => x !== null)
     .sort((a, b) => (SEV_RANK[b.severity] ?? 0) - (SEV_RANK[a.severity] ?? 0) || b.count - a.count);
 
+  // File-level findings (MISSING_TEST, MASSIVE_COMP, HEAVY_BARREL) report line 0
+  // → L1 after +1. Those categories don't need a line tag; everything else does.
+  const FILE_LEVEL = new Set(["Missing Test File", "Massive Component", "Heavy Barrel Export"]);
+
   const anomalySummary = anomalyFiles.slice(0, 10)
-    .map(a => `- [${a.severity.toUpperCase()}] ${a.file} (${a.types.join(", ")})`)
+    .map(a => {
+      const parts: string[] = [];
+      for (const [cat, lines] of a.byCategory) {
+        const code = ANOMALY_SHORT_CODE[cat] ?? cat;
+        if (FILE_LEVEL.has(cat)) {
+          parts.push(code);
+        } else {
+          const unique = Array.from(new Set(lines)).sort((x, y) => x - y);
+          parts.push(`${code}@L${unique.join(",L")}`);
+        }
+      }
+      return `- [${a.severity.toUpperCase()}] ${a.file} | ${parts.join(" | ")}`;
+    })
     .join("\n");
 
   return {

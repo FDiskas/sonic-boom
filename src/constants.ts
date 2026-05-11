@@ -107,6 +107,13 @@ export const SPECTROGRAM_CONFIG = {
   HEIGHT: 1024,
   MAX_HZ: 20000,
   MIN_HZ: 20,
+  // Margins reserve space for in-image axes/legend so the PNG is self-decoding
+  // for a vision model. Pixel math in generator/resolver is plot-relative;
+  // mapping_table.json stores absolute X (already shifted into the plot area).
+  PLOT_LEFT: 160,
+  PLOT_TOP: 16,
+  PLOT_RIGHT_MARGIN: 8,
+  PLOT_BOTTOM_MARGIN: 32,
   COMPLEXITY_THRESHOLD: 5,
   COMPLEXITY_HIGH_SEVERITY: 20,
   NESTING_THRESHOLD: 5,
@@ -116,4 +123,23 @@ export const SPECTROGRAM_CONFIG = {
   MAX_Z_INDEX: 1000,
   SNAP_PIXEL_RADIUS: 12,
   HEAVY_LIBRARIES: ["moment", "lodash", "jquery"],
+};
+
+// Short codes for anomaly categories — shared by the in-image legend and the
+// MCP text summary. Single source of truth keeps image/text in agreement so
+// the AI can cross-reference one against the other.
+export const ANOMALY_SHORT_CODE: Record<string, string> = {
+  [ANOMALY_CATEGORIES.EMPTY_CATCH]:        "EMPTY_CATCH",
+  [ANOMALY_CATEGORIES.LAYER_VIOLATION]:    "LAYER_VIOL",
+  [ANOMALY_CATEGORIES.EXPLICIT_ANY]:       "ANY_TYPE",
+  [ANOMALY_CATEGORIES.HEAVY_LIBRARY]:      "HEAVY_LIB",
+  [ANOMALY_CATEGORIES.PROP_OVERLOAD]:      "PROP_OVERLOAD",
+  [ANOMALY_CATEGORIES.HIGH_COMPLEXITY]:    "HIGH_CC",
+  [ANOMALY_CATEGORIES.MASSIVE_COMPONENT]:  "MASSIVE_COMP",
+  [ANOMALY_CATEGORIES.HEAVY_BARREL]:       "HEAVY_BARREL",
+  [ANOMALY_CATEGORIES.Z_INDEX]:            "Z_INDEX",
+  [ANOMALY_CATEGORIES.MAGIC_VALUE]:        "MAGIC_VAL",
+  [ANOMALY_CATEGORIES.TODO]:               "TODO",
+  [ANOMALY_CATEGORIES.COMMENTED_CODE]:     "COMMENTED",
+  [ANOMALY_CATEGORIES.MISSING_TEST]:       "MISSING_TEST",
 };

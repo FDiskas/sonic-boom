@@ -44,7 +44,16 @@ export function resolveCoordinates(
   const divisor = Math.max(1, slotWidth - 2);
   const estimatedLine = Math.floor((xInSlot / divisor) * maxLine);
 
-  const hz = ((SPECTROGRAM_CONFIG.HEIGHT - 1 - y) / (SPECTROGRAM_CONFIG.HEIGHT - 1)) * SPECTROGRAM_CONFIG.MAX_HZ;
+  // Y-axis is now plot-relative: the spectrogram has top/bottom margins
+  // reserved for the in-image banner and file-index axis. Hz math operates
+  // on the inner plot rectangle, then offsets by PLOT_TOP into PNG coords.
+  const { HEIGHT, MAX_HZ, PLOT_TOP, PLOT_BOTTOM_MARGIN } = SPECTROGRAM_CONFIG;
+  const plotHeight = HEIGHT - PLOT_TOP - PLOT_BOTTOM_MARGIN;
+  const yInPlot = y - PLOT_TOP;
+  const hz = ((plotHeight - 1 - yInPlot) / (plotHeight - 1)) * MAX_HZ;
+
+  const anomalyPixelY = (h: number) =>
+    PLOT_TOP + (plotHeight - 1) - Math.floor((h / MAX_HZ) * (plotHeight - 1));
 
   // 3. Snap to the nearest known anomaly in *pixel space* — inverse of the
   //    placement math in generator.ts. Pixel-space snap matches how the user
@@ -57,7 +66,7 @@ export function resolveCoordinates(
 
   for (const anomaly of anomalies) {
     const ax = entry.xr[0] + Math.floor((anomaly.l / maxLine) * divisor);
-    const ay = SPECTROGRAM_CONFIG.HEIGHT - 1 - Math.floor((anomaly.h / SPECTROGRAM_CONFIG.MAX_HZ) * (SPECTROGRAM_CONFIG.HEIGHT - 1));
+    const ay = anomalyPixelY(anomaly.h);
     const dx = ax - x;
     const dy = ay - y;
     const pixelDist = Math.sqrt(dx * dx + dy * dy);
@@ -76,7 +85,7 @@ export function resolveCoordinates(
     let bestDist = Infinity;
     for (const anomaly of anomalies) {
       const ax = entry.xr[0] + Math.floor((anomaly.l / maxLine) * divisor);
-      const ay = SPECTROGRAM_CONFIG.HEIGHT - 1 - Math.floor((anomaly.h / SPECTROGRAM_CONFIG.MAX_HZ) * (SPECTROGRAM_CONFIG.HEIGHT - 1));
+      const ay = anomalyPixelY(anomaly.h);
       const d = Math.sqrt((ax - x) ** 2 + (ay - y) ** 2);
       if (d < bestDist) {
         bestDist = d;
