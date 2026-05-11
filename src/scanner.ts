@@ -29,7 +29,7 @@ export function scanDirectory(rootDir: string, manualExclusions: string[] = []):
   const absoluteRoot = path.resolve(rootDir);
 
   const baseIg = ignore();
-  baseIg.add(["node_modules", ".git", "output", "dist", ".next", "out", "build"]);
+  baseIg.add(["node_modules", ".git", "output", "dist", ".next", "out", "build", ".vscode", ".idea"]);
   if (manualExclusions.length > 0) baseIg.add(manualExclusions);
 
   const files = getAllFiles(absoluteRoot, [{ base: absoluteRoot, ig: baseIg }]);
@@ -82,9 +82,9 @@ interface IgnoreScope {
 }
 
 function getAllFiles(dirPath: string, igStack: IgnoreScope[], arrayOfFiles: string[] = []): string[] {
-  const patterns = [".gitignore", ".npmignore", ".dockerignore", ".sonicignore", ".eslintignore", ".prettierignore", ".vscode", ".idea", ".gcloudignore"]
+  const patterns = [".gitignore", ".npmignore", ".dockerignore", ".sonicignore", ".eslintignore", ".prettierignore", ".gcloudignore"]
     .map(name => path.join(dirPath, name))
-    .filter(p => fs.existsSync(p))
+    .filter(p => fs.existsSync(p) && fs.statSync(p).isFile())
     .map(p => fs.readFileSync(p, "utf-8"))
     .join("\n");
 

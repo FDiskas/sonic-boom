@@ -91,4 +91,39 @@ describe("Scanner Ignore Logic", () => {
     expect(files).not.toContain("test.temp.ts");
     expect(files).toContain("important.temp.ts");
   });
+
+  test("does not crash on .vscode / .idea directories (EISDIR regression)", () => {
+    // Reset .gitignore to a minimal one so we can isolate this behaviour.
+    fs.writeFileSync(path.join(tempDir, ".gitignore"), "node_modules/\ndist/");
+
+    // .vscode and .idea exist as directories in many real projects — the scanner
+    // used to treat them as ignore-FILES and crash with EISDIR on readFileSync.
+    fs.mkdirSync(path.join(tempDir, ".vscode"), { recursive: true });
+    fs.writeFileSync(path.join(tempDir, ".vscode/settings.json"), "{}");
+    fs.mkdirSync(path.join(tempDir, ".idea"), { recursive: true });
+    fs.writeFileSync(path.join(tempDir, ".idea/workspace.xml"), "<x/>");
+
+    expect(() => scanDirectory(tempDir)).not.toThrow();
+
+    const files = scanDirectory(tempDir).map(r => r.fileName);
+    // Both IDE folders should also be skipped, not walked into.
+    expect(files.some(f => f.startsWith(".vscode/"))).toBe(false);
+    expect(files.some(f => f.startsWith(".idea/"))).toBe(false);
+  });
+
+  test("does not crash on random dot directory .zod (EISDIR regression)", () => {
+    // Reset .gitignore to a minimal one so we can isolate this behaviour.
+    fs.writeFileSync(path.join(tempDir, ".gitignore"), "node_modules/\ndist/");
+
+    // .zod exists as a directory in some projects — the scanner
+    // used to treat it as an ignore-FILE and crash with EISDIR on readFileSync.
+    fs.mkdirSync(path.join(tempDir, ".zod"), { recursive: true });
+    fs.writeFileSync(path.join(tempDir, ".zod/settings.json"), "{}");
+
+    expect(() => scanDirectory(tempDir)).not.toThrow();
+
+    const files = scanDirectory(tempDir).map(r => r.fileName);
+    // The .zod folder should also be skipped, not walked into.
+    expect(files.some(f => f.startsWith(".zod/"))).toBe(false);
+  });
 });
