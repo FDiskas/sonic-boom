@@ -1,6 +1,6 @@
 {
   "name": "sonic-boom-mcp",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Sonic Code Sentinel MCP Server - Visualizing codebases as spectrograms",
   "type": "module",
   "repository": {
