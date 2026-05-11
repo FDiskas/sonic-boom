@@ -2,7 +2,16 @@ import ts from "typescript";
 import * as fs from "fs";
 import * as path from "path";
 import ignore from "ignore";
-import { HOLOGRAPHIC_LAYERS, SPECTROGRAM_CONFIG, NODE_TYPE_OFFSETS } from "./constants";
+import {
+  HOLOGRAPHIC_LAYERS,
+  SPECTROGRAM_CONFIG,
+  NODE_TYPE_OFFSETS,
+  ANOMALY_CATEGORIES,
+  ANOMALY_HZ_OFFSETS,
+  ANOMALY_SEVERITY,
+  SEVERITY_AMPLITUDE,
+  type Severity,
+} from "./constants";
 
 export interface SonicNode {
   hz: number;
@@ -12,6 +21,12 @@ export interface SonicNode {
   type: string;
   isComplexityGrowl?: boolean;
   anomalyType?: string;
+  anomalyCategory?: string;
+  severity?: Severity;
+}
+
+function anomalyHz(category: string): number {
+  return HOLOGRAPHIC_LAYERS.ANOMALY.min + (ANOMALY_HZ_OFFSETS[category] ?? 0);
 }
 
 export interface FileScanResult {
@@ -119,37 +134,49 @@ export function scanCode(sourceCode: string, fileName: string, layerName: keyof 
   // File-level checks
   const lineCount = sourceCode.split('\n').length;
   if (lineCount > SPECTROGRAM_CONFIG.MAX_COMPONENT_LINES && (fileName.endsWith('.tsx') || fileName.endsWith('.jsx'))) {
+    const cat = ANOMALY_CATEGORIES.MASSIVE_COMPONENT;
+    const sev = ANOMALY_SEVERITY[cat]!;
     nodes.push({
-      hz: HOLOGRAPHIC_LAYERS.ANOMALY.min + 500,
-      amplitude: 1.0,
+      hz: anomalyHz(cat),
+      amplitude: SEVERITY_AMPLITUDE[sev],
       line: 0,
       column: 0,
       type: "File",
-      anomalyType: `Massive Component (${lineCount} lines)`
+      anomalyCategory: cat,
+      anomalyType: `Massive Component (${lineCount} lines)`,
+      severity: sev,
     });
   }
 
   if (!context.hasTest && !fileName.includes('.test.') && !fileName.includes('.spec.') && layerName === 'LOGIC') {
+    const cat = ANOMALY_CATEGORIES.MISSING_TEST;
+    const sev = ANOMALY_SEVERITY[cat]!;
     nodes.push({
-      hz: HOLOGRAPHIC_LAYERS.ANOMALY.min + 1000,
-      amplitude: 0.8,
+      hz: anomalyHz(cat),
+      amplitude: SEVERITY_AMPLITUDE[sev],
       line: 0,
       column: 0,
       type: "File",
-      anomalyType: "Missing Test File"
+      anomalyCategory: cat,
+      anomalyType: cat,
+      severity: sev,
     });
   }
 
   if (fileName.endsWith('index.ts') || fileName.endsWith('index.js')) {
     const exportCount = (sourceCode.match(/export /g) || []).length;
     if (exportCount > 10) {
+      const cat = ANOMALY_CATEGORIES.HEAVY_BARREL;
+      const sev = ANOMALY_SEVERITY[cat]!;
       nodes.push({
-        hz: HOLOGRAPHIC_LAYERS.ANOMALY.min + 1500,
-        amplitude: 0.7,
+        hz: anomalyHz(cat),
+        amplitude: SEVERITY_AMPLITUDE[sev],
         line: 0,
         column: 0,
         type: "File",
-        anomalyType: `Heavy Barrel Export (${exportCount} exports)`
+        anomalyCategory: cat,
+        anomalyType: `Heavy Barrel Export (${exportCount} exports)`,
+        severity: sev,
       });
     }
   }
@@ -211,13 +238,15 @@ export function scanCode(sourceCode: string, fileName: string, layerName: keyof 
 
     let isAnomaly = node.kind === ts.SyntaxKind.Unknown;
     let anomalyType: string | undefined;
+    let anomalyCategory: string | undefined;
 
     // 1. Explicit Any
     if (!isAnomaly && (ts.isVariableDeclaration(node) || ts.isParameter(node) || ts.isPropertyDeclaration(node))) {
       const typeNode = (node as { type?: ts.TypeNode }).type;
       if (typeNode && typeNode.kind === ts.SyntaxKind.AnyKeyword) {
         isAnomaly = true;
-        anomalyType = "Explicit 'any' type";
+        anomalyCategory = ANOMALY_CATEGORIES.EXPLICIT_ANY;
+        anomalyType = ANOMALY_CATEGORIES.EXPLICIT_ANY;
       }
     }
 
@@ -225,7 +254,8 @@ export function scanCode(sourceCode: string, fileName: string, layerName: keyof 
     if (!isAnomaly && ts.isCatchClause(node)) {
       if (node.block.statements.length === 0) {
         isAnomaly = true;
-        anomalyType = "Empty catch block";
+        anomalyCategory = ANOMALY_CATEGORIES.EMPTY_CATCH;
+        anomalyType = ANOMALY_CATEGORIES.EMPTY_CATCH;
       }
     }
 
@@ -234,12 +264,14 @@ export function scanCode(sourceCode: string, fileName: string, layerName: keyof 
       const moduleSpecifier = node.moduleSpecifier.getText().replace(/['"]/g, '');
       if (SPECTROGRAM_CONFIG.HEAVY_LIBRARIES.some(lib => moduleSpecifier.includes(lib))) {
         isAnomaly = true;
+        anomalyCategory = ANOMALY_CATEGORIES.HEAVY_LIBRARY;
         anomalyType = `Heavy Library Import (${moduleSpecifier})`;
       }
 
       // Basic Layer Boundary Check
       if (fileName.includes('/components/') && moduleSpecifier.includes('/pages/')) {
         isAnomaly = true;
+        anomalyCategory = ANOMALY_CATEGORIES.LAYER_VIOLATION;
         anomalyType = "Layer Violation: Component importing from Page";
       }
     }
@@ -249,13 +281,15 @@ export function scanCode(sourceCode: string, fileName: string, layerName: keyof 
       const text = node.getText();
       if (text.includes('-[') && !text.includes('var(')) {
         isAnomaly = true;
-        anomalyType = "Tailwind Magic Value detected";
+        anomalyCategory = ANOMALY_CATEGORIES.MAGIC_VALUE;
+        anomalyType = ANOMALY_CATEGORIES.MAGIC_VALUE;
       }
       const zMatch = text.match(/z-\[(\d+)\]|z-(\d+)/);
       if (zMatch) {
         const val = parseInt(zMatch[1] ?? zMatch[2] ?? "0");
         if (val > SPECTROGRAM_CONFIG.MAX_Z_INDEX) {
           isAnomaly = true;
+          anomalyCategory = ANOMALY_CATEGORIES.Z_INDEX;
           anomalyType = `Z-Index Escalation (${val})`;
         }
       }
@@ -265,6 +299,7 @@ export function scanCode(sourceCode: string, fileName: string, layerName: keyof 
     if (!isAnomaly && ts.isInterfaceDeclaration(node) && node.name.text.endsWith('Props')) {
       if (node.members.length > 7) {
         isAnomaly = true;
+        anomalyCategory = ANOMALY_CATEGORIES.PROP_OVERLOAD;
         anomalyType = `Prop Overload (${node.members.length} props)`;
       }
     }
@@ -277,13 +312,15 @@ export function scanCode(sourceCode: string, fileName: string, layerName: keyof 
         const commentText = fullText.substring(comment.pos, comment.end);
         if (/TODO|FIXME/i.test(commentText)) {
           isAnomaly = true;
-          anomalyType = "Unresolved TODO/FIXME";
+          anomalyCategory = ANOMALY_CATEGORIES.TODO;
+          anomalyType = ANOMALY_CATEGORIES.TODO;
           break;
         }
         // Detect commented-out code (heuristic: long comments with code-like characters)
         if (commentText.split('\n').length > 5 && /[{};=()]/g.test(commentText)) {
           isAnomaly = true;
-          anomalyType = "Commented-out Code Block";
+          anomalyCategory = ANOMALY_CATEGORIES.COMMENTED_CODE;
+          anomalyType = ANOMALY_CATEGORIES.COMMENTED_CODE;
           break;
         }
       }
@@ -292,12 +329,14 @@ export function scanCode(sourceCode: string, fileName: string, layerName: keyof 
     let hz: number;
     let amplitude: number = Math.max(0.1, 1.0 - (depth * 0.15));
     let isComplexityGrowl = false;
+    let severity: Severity | undefined;
 
     const nodeType = getNodeType(node);
 
-    if (isAnomaly) {
-      hz = (HOLOGRAPHIC_LAYERS.ANOMALY.min + HOLOGRAPHIC_LAYERS.ANOMALY.max) / 2 + (Math.random() * 1000);
-      amplitude = 1.0;
+    if (isAnomaly && anomalyCategory) {
+      severity = ANOMALY_SEVERITY[anomalyCategory] ?? "med";
+      hz = anomalyHz(anomalyCategory);
+      amplitude = SEVERITY_AMPLITUDE[severity];
     } else {
       // Only check complexity for "major" blocks to avoid noise
       const isMajorBlock = ts.isFunctionDeclaration(node) ||
@@ -309,22 +348,39 @@ export function scanCode(sourceCode: string, fileName: string, layerName: keyof 
         const complexity = calculateComplexity(node);
         if (complexity > SPECTROGRAM_CONFIG.COMPLEXITY_THRESHOLD || depth > SPECTROGRAM_CONFIG.NESTING_THRESHOLD) {
           isComplexityGrowl = true;
-          amplitude = 1.0;
+          anomalyCategory = ANOMALY_CATEGORIES.HIGH_COMPLEXITY;
+          anomalyType = `High Complexity (cc=${complexity}, depth=${depth})`;
+          severity = complexity >= SPECTROGRAM_CONFIG.COMPLEXITY_HIGH_SEVERITY ? "high" : "med";
+          hz = anomalyHz(ANOMALY_CATEGORIES.HIGH_COMPLEXITY);
+          amplitude = SEVERITY_AMPLITUDE[severity];
+          const { line, character } = sourceFile.getLineAndCharacterOfPosition(node.getStart());
+          nodes.push({ hz, amplitude, line, column: character, type: nodeType, isComplexityGrowl, anomalyType, anomalyCategory, severity });
+          ts.forEachChild(node, (child) => visit(child, depth + 1));
+          return;
         }
       }
 
       const typeOffset = NODE_TYPE_OFFSETS[nodeType] || 0;
-      hz = layer.min + typeOffset; // Remove complexity from Hz to keep bands clean
+      hz = layer.min + typeOffset; // Structural pixels stay in their layer band
       hz = Math.min(hz, layer.max - 1);
     }
 
     const { line, character } = sourceFile.getLineAndCharacterOfPosition(node.getStart());
-    nodes.push({ hz, amplitude, line, column: character, type: nodeType, isComplexityGrowl, anomalyType });
+    nodes.push({ hz, amplitude, line, column: character, type: nodeType, isComplexityGrowl, anomalyType, anomalyCategory, severity });
     ts.forEachChild(node, (child) => visit(child, depth + 1));
   }
 
   if (layerName === 'LOGIC') visit(sourceFile, 0);
-  else sourceCode.split('\n').forEach((_, i) => nodes.push({ hz: layer.min + Math.random() * (layer.max - layer.min), amplitude: 0.5, line: i, column: 0, type: "Line" }));
+  else {
+    const span = layer.max - layer.min;
+    sourceCode.split('\n').forEach((_, i) => nodes.push({
+      hz: layer.min + ((i * 173) % span),
+      amplitude: 0.5,
+      line: i,
+      column: 0,
+      type: "Line",
+    }));
+  }
 
   return nodes;
 }

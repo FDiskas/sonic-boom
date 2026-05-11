@@ -11,7 +11,6 @@ import * as os from "os";
 import { scanDirectory } from "./scanner";
 import { generateProjectSpectrogram } from "./generator";
 import { resolveCoordinates } from "./resolver";
-import { HOLOGRAPHIC_LAYERS } from "./constants";
 
 const pkgPath = path.join(import.meta.dirname, "../package.json");
 const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8"));
@@ -135,25 +134,48 @@ async function handleGetProjectSpectrogram(args: any) {
   const pngBase64 = fs.readFileSync(pngPath).toString("base64");
   const nodeCount = results.reduce((acc, r) => acc + r.nodes.length, 0);
 
-  const anomalies = results.filter(r => r.nodes.some(n => n.hz >= HOLOGRAPHIC_LAYERS.ANOMALY.min || n.isComplexityGrowl));
-  const anomalySummary = anomalies.slice(0, 10).map(a => {
-    const specificAnomalies = a.nodes
-      .filter(n => n.isComplexityGrowl || n.anomalyType)
-      .map(n => n.isComplexityGrowl ? "High Complexity" : n.anomalyType);
-    const uniqueTypes = Array.from(new Set(specificAnomalies));
-    return `- ${a.fileName} (${uniqueTypes.join(", ")})`;
-  }).join("\n");
+  const SEV_RANK: Record<string, number> = { high: 3, med: 2, low: 1 };
+  const anomalyFiles = results
+    .map(r => {
+      const findings = r.nodes.filter(n => n.anomalyType || n.isComplexityGrowl);
+      if (findings.length === 0) return null;
+      const top = findings.reduce<string>((acc, n) => {
+        const s = n.severity ?? "med";
+        return (SEV_RANK[s] ?? 0) > (SEV_RANK[acc] ?? 0) ? s : acc;
+      }, "low");
+      const uniqueTypes = Array.from(new Set(findings.map(n => n.anomalyType ?? "High Complexity")));
+      return { file: r.fileName, severity: top, types: uniqueTypes, count: findings.length };
+    })
+    .filter((x): x is { file: string; severity: string; types: string[]; count: number } => x !== null)
+    .sort((a, b) => (SEV_RANK[b.severity] ?? 0) - (SEV_RANK[a.severity] ?? 0) || b.count - a.count);
+
+  const anomalySummary = anomalyFiles.slice(0, 10)
+    .map(a => `- [${a.severity.toUpperCase()}] ${a.file} (${a.types.join(", ")})`)
+    .join("\n");
 
   return {
     content: [
       {
         type: "text",
         text: `🎵 Project Encoded. Scanned ${results.length} files (${nodeCount} nodes).\n\n` +
-          `### 🕵️ Anomaly Summary (Top 10):\n${anomalySummary || "No major anomalies detected."}\n\n` +
-          `### 🎨 Spectrogram Legend:\n` +
-          `- **Red Glows**: High Complexity/Deep Nesting (Actionable Hotspots)\n` +
-          `- **Magenta Dots**: Potential Bugs/Anomalies (e.g., ': any' usage)\n` +
-          `- **Green/Blue/Orange**: Logic/Styles/Markup layers\n\n` +
+          `### 🕵️ Anomaly Summary (Top 10, by severity):\n${anomalySummary || "No major anomalies detected."}\n\n` +
+          `### 🎨 Spectrogram Legend (deterministic heatmap — same code → same image):\n` +
+          `Y-axis bands inside the ANOMALY region (top of image) each correspond to ONE concern.\n` +
+          `Brightness = severity (high/med/low). Color encodes the category:\n` +
+          `- **White**: Layer Violation (high)\n` +
+          `- **Bright Red**: Empty catch block (high)\n` +
+          `- **Light Red**: Explicit \`: any\` type (med)\n` +
+          `- **Purple**: Heavy library import — moment/lodash/jquery (med)\n` +
+          `- **Orange**: Prop Overload >7 props (high)\n` +
+          `- **Amber**: High Complexity — cc included in label (med, high if cc>=20)\n` +
+          `- **Gold**: Massive Component >250 lines (high)\n` +
+          `- **Dim Yellow**: Heavy Barrel Export >10 (med)\n` +
+          `- **Sky Blue**: Z-Index Escalation (med)\n` +
+          `- **Cyan**: Tailwind Magic Value (low)\n` +
+          `- **Bright Yellow**: Unresolved TODO/FIXME (med)\n` +
+          `- **Grey**: Commented-out Code Block (med)\n` +
+          `- **Dim Blue-Grey**: Missing Test File (low)\n` +
+          `Below ANOMALY: green/blue/orange = Logic/Styles/Markup structural pixels.\n\n` +
           `**NOTE**: The mapping table is stored locally. Use 'resolve_sonic_coordinates' with (x, y) to inspect specific points.`
       },
       {

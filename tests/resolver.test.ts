@@ -97,4 +97,48 @@ describe("resolveCoordinates", () => {
     expect(r).not.toBeNull();
     expect(r!.line).toBeGreaterThan(1);
   });
+
+  test("returns canonical category and severity on a strict snap", () => {
+    const entry = mappingTable[0];
+    const an = entry.an[0];
+    expect(an.c).toBeDefined();
+    expect(an.s).toBeDefined();
+
+    const { x, y } = anomalyPixel(entry, an.l, an.h);
+    const r = resolveCoordinates(x, y, tablePath, tempDir);
+    expect(r).not.toBeNull();
+    expect(r!.category).toBe(an.c);
+    expect(r!.severity).toBe(an.s);
+    expect(r!.proximityMatch).toBeUndefined();
+    expect(r!.pixelDistance).toBeUndefined();
+  });
+
+  test("tolerates ±10px imprecision under the widened snap radius", () => {
+    const entry = mappingTable[0];
+    // Pick an anomaly away from the slot's left edge so dx=-10 stays in-slot.
+    const an = entry.an.find((a: any) => a.l > 50) ?? entry.an[0];
+    const { x, y } = anomalyPixel(entry, an.l, an.h);
+
+    // Old radius was 4px — these clicks would have missed. New radius is 12px.
+    for (const [dx, dy] of [[10, 0], [-10, 0], [0, 10], [0, -10], [7, 7]]) {
+      const r = resolveCoordinates(x + dx!, y + dy!, tablePath, tempDir);
+      expect(r).not.toBeNull();
+      expect(r!.proximityMatch).toBeUndefined();
+      expect(r!.line).toBe(an.l + 1);
+    }
+  });
+
+  test("falls back to proximity match for far clicks instead of returning null", () => {
+    const entry = mappingTable[0];
+    const an = entry.an.find((a: any) => a.l > 50) ?? entry.an[0];
+    const { x, y } = anomalyPixel(entry, an.l, an.h);
+
+    // 50px above the anomaly — far outside snap radius, but the slot DOES have
+    // an anomaly. The fix's whole point: don't claim "no match" in this case.
+    const r = resolveCoordinates(x, y - 50, tablePath, tempDir);
+    expect(r).not.toBeNull();
+    expect(r!.proximityMatch).toBe(true);
+    expect(r!.pixelDistance).toBeGreaterThanOrEqual(40);
+    expect(r!.category).toBe(an.c);
+  });
 });

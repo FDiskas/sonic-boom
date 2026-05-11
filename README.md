@@ -4,128 +4,172 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-%23007ACC.svg?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![MCP](https://img.shields.io/badge/MCP-Server-orange.svg?style=flat)](https://modelcontextprotocol.io/)
 
-**Sonic Code Sentinel** is a revolutionary Multimodal Code Diagnostic tool that bypasses LLM token limits by encoding massive TypeScript/JavaScript codebases into high-density **Audio Spectrogram PNGs**. 
+**Sonic Code Sentinel** encodes an entire TypeScript / JavaScript codebase into a single PNG **heatmap** that vision-capable AI models can read in one glance — bypassing token limits for codebase-scale audits.
 
-Instead of reading raw text, this system allows Vision-capable AI models (like Gemini 1.5 Pro) to diagnose system errors, architectural debt, and "auditory anomalies" by interpreting the visual patterns of code logic.
+The image is a *deterministic function of the AST*: same code → byte-identical pixels. Each pixel encodes a category (via color) and severity (via brightness), so the picture itself is the audit summary — no separate lookup required.
 
 ---
 
-## 🎵 The "Sonic Code" Paradigm
+## 🎵 The Spectrogram
 
-The codebase is mapped onto a 2D frequency spectrum where the spatial distribution of "sound" represents the structural integrity of the code.
+The codebase is laid out as a 2D heatmap.
 
 ```mermaid
 graph LR
     Code[Source Code] --> Scanner[AST Scanner]
-    Scanner --> Freq[Frequency Modulation]
-    Freq --> PNG[Spectrogram PNG]
+    Scanner --> Map[Deterministic Color Map]
+    Map --> PNG[Spectrogram PNG]
     PNG --> AI[Vision AI Model]
     AI --> Fix[Surgical Code Fix]
 ```
 
 ### 🗺️ Coordinate Mapping
-- **X-Axis (Time)**: The temporal sequence of the codebase. Each file occupies a discrete "Time Slot" separated by silent frames.
-- **Y-Axis (Frequency)**: Partitioned into **Holographic Layers** (20Hz – 20kHz).
-- **Amplitude (Brightness)**: Represents nesting depth and cyclomatic complexity. High brightness = High complexity.
+- **X-Axis**: Each file occupies a contiguous horizontal slot. Within a slot, X is proportional to the line number of the node.
+- **Y-Axis**: Partitioned into four bands (see below). Within the top `ANOMALY` band, each Y-row is reserved for one concern — turning the band into a row-per-category heatmap.
+- **Color**: Encodes the anomaly category (see catalog below).
+- **Brightness (Amplitude)**: Encodes severity — `high` is brightest (1.0), `med` is mid (0.75), `low` is dim (0.5). Structural (non-anomaly) pixels fade with nesting depth.
 
-### 🌈 Holographic Layers
-| Frequency Range | Layer Name | Content Types |
+### 🌈 Frequency Bands
+| Hz Range | Layer | Content |
 | :--- | :--- | :--- |
-| **20Hz - 8kHz** | `LOGIC` | Core logic (`.ts`, `.tsx`, `.js`, `.jsx`) |
-| **8kHz - 12kHz** | `STYLES` | Styling assets (`.css`, `.scss`, `.less`) |
-| **12kHz - 16kHz** | `MARKUP` | Structural assets (`.svg`, `.html`, `.md`) |
-| **16kHz - 20kHz** | `ANOMALY` | **The Anomaly Zone** (Bugs, `any` types, Circular deps) |
+| 20 – 8 k | `LOGIC` | Source files (`.ts`, `.tsx`, `.js`, `.jsx`) |
+| 8 k – 12 k | `STYLES` | Stylesheets (`.css`, `.scss`, `.less`) |
+| 12 k – 16 k | `MARKUP` | Markup assets (`.svg`, `.html`, `.md`) |
+| 16 k – 20 k | `ANOMALY` | Per-category rows for detected concerns |
 
 ---
 
-## 🚨 Visual Anomalies
+## 🔬 Detected Anomalies
 
-AI models are trained to identify specific visual "textures" that indicate poor code health:
+13 categories. Each has a stable Hz row, a stable color, and a fixed severity — so the heatmap is readable without consulting the mapping table.
 
-- **The Shriek (Magenta Spike)**: A sharp vertical line in the 16kHz+ zone. Indicates a high-risk `any` type, unhandled exception, or an `unknown` node.
-- **The Growl (Red Gradient)**: A wide, bright red smear. Indicates a **"Complexity Growl"**—functions where cyclomatic complexity or nesting depth exceeds threshold (> 5).
-- **Silent Frames**: Black vertical lines that act as boundaries between files, ensuring no frequency bleeding.
+| Category | Severity | Detection |
+| :--- | :--- | :--- |
+| Empty catch block | **high** | `catch (e) {}` with empty body |
+| Layer Violation | **high** | File under `/components/` importing from `/pages/` |
+| Massive Component | **high** | `.tsx` / `.jsx` with > 250 lines |
+| Prop Overload | **high** | Interface ending in `Props` with > 7 members (count surfaced in label) |
+| Explicit `: any` type | med | Parameter, variable, or property typed `any` |
+| Heavy Library Import | med | Imports `moment`, `lodash`, or `jquery` (name surfaced in label) |
+| High Complexity | med (high if cc ≥ 20) | Function / method / arrow / class with cyclomatic > 5 or depth > 5 — label includes `cc=N, depth=N` |
+| Heavy Barrel Export | med | `index.ts` / `index.js` with > 10 exports |
+| Commented-out Code Block | med | Long comment block containing code-like characters |
+| Z-Index Escalation | med | `z-[N]` or `z-N` where N > 1000 |
+| Unresolved TODO/FIXME | med | Leading comment matching `/TODO|FIXME/i` |
+| Tailwind Magic Value | low | Arbitrary `-[value]` Tailwind class outside `var(...)` |
+| Missing Test File | low | Source file with no sibling `*.test.*` or `*.spec.*` |
 
----
-
-## 🛠️ MCP Tools (The Surgical Strike)
-
-Sonic Code Sentinel includes a built-in **Model Context Protocol (MCP)** server, enabling AI agents to interact with the spectrogram programmatically.
-
-| Tool Name | Purpose |
+### 🎨 Color Legend
+| Color | Category |
 | :--- | :--- |
-| `get_project_spectrogram` | **Initial Scan**. Generates the PNG and mapping table. |
-| `resolve_sonic_coordinates` | **Translation**. Converts (X, Y) pixel coordinates into File/Line numbers. |
-| `get_code_snippet` | **Extraction**. Fetches a 20-line context window for the resolved location. |
+| White | Layer Violation |
+| Bright Red | Empty catch block |
+| Light Red | Explicit `: any` type |
+| Purple | Heavy Library Import |
+| Orange | Prop Overload |
+| Amber | High Complexity (with 5-px horizontal spread for emphasis) |
+| Gold | Massive Component |
+| Dim Yellow | Heavy Barrel Export |
+| Sky Blue | Z-Index Escalation |
+| Cyan | Tailwind Magic Value |
+| Bright Yellow | Unresolved TODO/FIXME |
+| Grey | Commented-out Code Block |
+| Dim Blue-Grey | Missing Test File |
 
-### 🎯 The Workflow
-1. **Visualize**: Agent generates a spectrogram of the entire repo.
-2. **Identify**: Vision model spots a "Magenta Shriek" at `(1024, 850)`.
-3. **Resolve**: Agent calls `resolve_sonic_coordinates(x=1024, y=850)`.
-4. **Fix**: Agent fetches the code via `get_code_snippet` and applies a patch.
+Below the `ANOMALY` band, structural pixels render green / blue / orange for the `LOGIC` / `STYLES` / `MARKUP` layers respectively.
+
+---
+
+## 🛠️ MCP Tools
+
+Three tools, used as a pipeline.
+
+| Tool | Purpose |
+| :--- | :--- |
+| `get_project_spectrogram` | Generates the PNG + mapping table. Returns the PNG (base64), a severity-sorted top-10 anomaly summary, and the color legend. |
+| `resolve_sonic_coordinates` | Translates `(x, y)` pixel coordinates into `{ file, line, type, category?, severity?, proximityMatch?, pixelDistance?, context }`. |
+| `get_code_snippet` | Fetches a 20-line context window for a given file + line. |
+
+### Resolution behavior
+- **Strict snap**: clicks within 12 px of an anomaly pixel resolve to that anomaly, including its canonical category and severity.
+- **Proximity fallback**: a click that lands far from every anomaly in a non-empty file slot still resolves — to the *closest* in-slot anomaly, flagged with `proximityMatch: true` and a `pixelDistance` in pixels. Replaces the old "Could not resolve coordinates" dead end.
+
+### Workflow
+1. **Visualize**: agent calls `get_project_spectrogram` over the repo root.
+2. **Read the heatmap**: the vision model identifies a bright pixel cluster by color (e.g. amber row = High Complexity, white row = Layer Violation).
+3. **Resolve**: `resolve_sonic_coordinates(x, y)` returns file, line, category, severity.
+4. **Snippet**: `get_code_snippet` for the 20-line window.
+5. **Fix**: apply patch.
 
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- [Bun](https://bun.sh) (v1.1+ recommended)
+- [Bun](https://bun.sh) v1.1+
 
-### Installation
+### Install
 ```bash
 bun install
 ```
 
-### Running as a CLI
-Analyze any local directory and generate a diagnostic spectrogram:
-
+### CLI
+Generate a spectrogram for any local directory:
 ```bash
-# Analyze a project
+# Scan a project
 bun run src/index.ts ../path/to/project
 
-# Exclude specific patterns
+# Exclude additional patterns
 bun run src/index.ts ../path/to/project --exclude "**/tests/**"
+
+# Resolve coordinates from a previously generated mapping
+bun run src/index.ts fix --coords 150,400 --issue "describe the issue"
 ```
 
-### Running as an MCP Server
-To use with Claude Desktop or other MCP clients, add this to your config:
+Outputs land in `./output/`:
+- `spectrogram.png` — the heatmap.
+- `mapping_table.json` — per-pixel metadata used by the resolver (file, line, anomaly category, severity).
 
+### MCP server
+Add to your MCP client config (e.g. Claude Desktop):
 ```json
 {
   "mcpServers": {
     "sonic-boom": {
       "command": "npx",
-      "args": [
-        "-y",
-        "sonic-boom-mcp@latest"
-      ]
+      "args": ["-y", "sonic-boom-mcp@latest"]
     }
   }
 }
 ```
 
-### Inspecting MCP Server
-To inspect the MCP server locally run this command:
+The MCP server stores its artifacts under `<tmp>/sonic-boom-mcp/`; tool calls pass `directoryPath` to identify the project root.
 
+### Inspect MCP locally
 ```bash
 bun x npx @modelcontextprotocol/inspector bun run src/mcp-server.ts
 ```
 
+### Run tests
+```bash
+bun test
+```
+The suite covers ignore-file handling, every anomaly detection rule, scan determinism, and resolver round-trip behavior.
+
 ---
 
-## 📂 Output
-The tool generates a diagnostic bundle in the `./output` directory:
-- **`spectrogram.png`**: The high-density visual map.
-- **`mapping_table.json`**: Metadata used by the `resolver` to map pixels to code.
+## 🧱 Design Properties
+
+- **Deterministic**: same source → byte-identical PNG and mapping JSON across runs. No RNG anywhere in the scan or render pipeline.
+- **Heatmap by construction**: color = category, brightness = severity, Y-row = concern. The image is the audit, not a decoration.
+- **Ignore-file aware**: respects `.gitignore`, `.npmignore`, `.dockerignore`, `.sonicignore`, `.eslintignore`, `.prettierignore`, and `.gcloudignore` — both at the repo root and in any subdirectory. Built-in skip list: `node_modules`, `.git`, `dist`, `.next`, `out`, `build`, `.vscode`, `.idea`, `output`.
 
 **Sonic Code Sentinel** — *Hear the code. See the bugs.*
 
 ---
 
 ## 📄 License
-This project is licensed under the **PolyForm Noncommercial License 1.0.0**. 
+This project is licensed under the **PolyForm Noncommercial License 1.0.0**.
 
-- **Free for Personal/Non-commercial use**: You are free to use, modify, and distribute this software for personal projects, research, and hobbyist pursuits.
-- **Commercial Use**: Any use for profit-seeking purposes requires a separate commercial license. Please contact the author for details.
-
-
+- **Free for personal / non-commercial use**: research, learning, hobby projects.
+- **Commercial use** requires a separate commercial license — please contact the author for details.

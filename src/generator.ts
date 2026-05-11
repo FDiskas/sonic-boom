@@ -1,8 +1,21 @@
 import { PNG } from "pngjs";
 import * as fs from "fs";
 import * as path from "path";
-import { SPECTROGRAM_CONFIG, HOLOGRAPHIC_LAYERS } from "./constants";
+import {
+  SPECTROGRAM_CONFIG,
+  HOLOGRAPHIC_LAYERS,
+  ANOMALY_COLORS,
+  ANOMALY_CATEGORIES,
+} from "./constants";
 import type { FileScanResult } from "./scanner";
+
+export interface MappingAnomaly {
+  l: number;        // line
+  h: number;        // hz
+  t: string;        // human-readable type (may include parameters)
+  c: string;        // canonical category (keys ANOMALY_COLORS / SEVERITY tables)
+  s: string;        // severity: "high" | "med" | "low"
+}
 
 export interface MappingEntry {
   xr: [number, number]; // x_range
@@ -10,8 +23,14 @@ export interface MappingEntry {
   t: string;           // type
   nc: number;          // nodeCount
   ml: number;          // maxLine
-  an: { l: number; h: number; t: string }[]; // anomalies
+  an: MappingAnomaly[]; // anomalies
 }
+
+const LAYER_COLORS: Record<string, [number, number, number]> = {
+  LOGIC:  [ 50, 255, 150],
+  STYLES: [ 50, 200, 255],
+  MARKUP: [255, 150,  50],
+};
 
 export async function generateProjectSpectrogram(results: FileScanResult[], outputDir: string) {
   const { WIDTH, HEIGHT, MAX_HZ } = SPECTROGRAM_CONFIG;
@@ -47,13 +66,15 @@ export async function generateProjectSpectrogram(results: FileScanResult[], outp
         result.nodes
           .filter(n => n.isComplexityGrowl || n.anomalyType)
           .reduce((map, n) => {
-            const type = n.isComplexityGrowl ? "High Complexity" : (n.anomalyType || "Anomaly");
+            const type = n.anomalyType || (n.isComplexityGrowl ? ANOMALY_CATEGORIES.HIGH_COMPLEXITY : "Anomaly");
+            const category = n.anomalyCategory || (n.isComplexityGrowl ? ANOMALY_CATEGORIES.HIGH_COMPLEXITY : "Anomaly");
+            const sev = n.severity || "med";
             const key = `${n.line}-${type}`;
             if (!map.has(key)) {
-              map.set(key, { l: n.line, h: n.hz, t: type });
+              map.set(key, { l: n.line, h: n.hz, t: type, c: category, s: sev });
             }
             return map;
-          }, new Map<string, { l: number; h: number; t: string }>())
+          }, new Map<string, MappingAnomaly>())
           .values()
       )
     });
@@ -67,29 +88,31 @@ export async function generateProjectSpectrogram(results: FileScanResult[], outp
       if (x < 0 || x >= WIDTH || y < 0 || y >= HEIGHT) continue;
 
       const idx = (WIDTH * y + x) << 2;
-      let r = 0, g = 0, b = 0;
 
+      // Color is a function of category (heatmap row identity), not layer alone.
+      let color: [number, number, number];
+      if (node.anomalyCategory && ANOMALY_COLORS[node.anomalyCategory]) {
+        color = ANOMALY_COLORS[node.anomalyCategory]!;
+      } else if (node.hz >= HOLOGRAPHIC_LAYERS.ANOMALY.min) {
+        color = ANOMALY_COLORS[ANOMALY_CATEGORIES.HIGH_COMPLEXITY]!;
+      } else {
+        color = LAYER_COLORS[result.layer] ?? LAYER_COLORS.LOGIC!;
+      }
+
+      // Complexity growl spreads horizontally for visibility — preserved.
       if (node.isComplexityGrowl) {
-        r = 255; g = 30; b = 30;
         for (let sx = -2; sx <= 2; sx++) {
           const sidx = (WIDTH * y + (x + sx)) << 2;
           if (sidx >= 0 && sidx < png.data.length) {
-            png.data[sidx] = Math.min(255, (png.data[sidx] ?? 0) + 150 * node.amplitude);
+            png.data[sidx] = Math.min(255, (png.data[sidx] ?? 0) + color[0] * node.amplitude);
+            png.data[sidx + 1] = Math.min(255, (png.data[sidx + 1] ?? 0) + color[1] * 0.5 * node.amplitude);
           }
         }
-      } else if (node.hz >= HOLOGRAPHIC_LAYERS.ANOMALY.min) {
-        r = 255; g = 0; b = 255;
-      } else if (result.layer === 'STYLES') {
-        r = 50; g = 200; b = 255;
-      } else if (result.layer === 'MARKUP') {
-        r = 255; g = 150; b = 50;
-      } else {
-        r = 50; g = 255; b = 150;
       }
 
-      png.data[idx] = Math.min(255, (png.data[idx] ?? 0) + r * node.amplitude);
-      png.data[idx + 1] = Math.min(255, (png.data[idx + 1] ?? 0) + g * node.amplitude);
-      png.data[idx + 2] = Math.min(255, (png.data[idx + 2] ?? 0) + b * node.amplitude);
+      png.data[idx] = Math.min(255, (png.data[idx] ?? 0) + color[0] * node.amplitude);
+      png.data[idx + 1] = Math.min(255, (png.data[idx + 1] ?? 0) + color[1] * node.amplitude);
+      png.data[idx + 2] = Math.min(255, (png.data[idx + 2] ?? 0) + color[2] * node.amplitude);
     }
 
     const silentX = xEnd + 1;
