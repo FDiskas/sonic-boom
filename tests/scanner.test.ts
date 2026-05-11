@@ -1,5 +1,5 @@
 import { test, expect, describe, beforeAll, afterAll } from "bun:test";
-import { scanDirectory } from "./scanner";
+import { scanDirectory } from "../src/scanner";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";

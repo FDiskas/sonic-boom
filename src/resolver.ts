@@ -24,57 +24,62 @@ export function resolveCoordinates(
   const absoluteFilePath = path.join(rootDir, entry.f);
   if (!fs.existsSync(absoluteFilePath)) return null;
 
-  // 2. Estimate the line number
+  // 2. Estimate the line number from X (used as a fallback)
   const xInSlot = x - entry.xr[0];
   const slotWidth = entry.xr[1] - entry.xr[0] + 1;
   const maxLine = entry.ml || 1;
-  
+
   const divisor = Math.max(1, slotWidth - 2);
   const estimatedLine = Math.floor((xInSlot / divisor) * maxLine);
-  
-  // 3. Refine using Y (Frequency) and Metadata
+
   const hz = ((SPECTROGRAM_CONFIG.HEIGHT - 1 - y) / (SPECTROGRAM_CONFIG.HEIGHT - 1)) * SPECTROGRAM_CONFIG.MAX_HZ;
-  
-  // Find the closest anomaly in this file to the estimated line and frequency
-  const anomalies = entry.an || [];
+
+  // 3. Snap to the nearest known anomaly in *pixel space* — this is the
+  //    inverse of the placement math in generator.ts (xOffset/y computation).
+  //    Snapping in pixel space (not line space) matches how the user clicked
+  //    and prevents drift to file-header lines when the slot is narrow.
+  const anomalies: { l: number; h: number; t: string }[] = entry.an || [];
+  let snappedLine: number | null = null;
   let detectedType = entry.t;
-  let closestAnomaly = null;
-  let minDistance = Infinity;
+  const SNAP_PIXEL_RADIUS = 4; // ~4px tolerance for imprecise clicks
+  let bestPixelDist = Infinity;
 
   for (const anomaly of anomalies) {
-    const lineDist = Math.abs(anomaly.l - estimatedLine);
-    const hzDist = Math.abs(anomaly.h - hz) / 100; // Normalize frequency distance
-    const dist = Math.sqrt(lineDist * lineDist + hzDist * hzDist);
-    
-    if (dist < minDistance && dist < 50) { // Only snap if reasonably close
-      minDistance = dist;
-      closestAnomaly = anomaly;
+    const ax = entry.xr[0] + Math.floor((anomaly.l / maxLine) * divisor);
+    const ay = SPECTROGRAM_CONFIG.HEIGHT - 1 - Math.floor((anomaly.h / SPECTROGRAM_CONFIG.MAX_HZ) * (SPECTROGRAM_CONFIG.HEIGHT - 1));
+    const dx = ax - x;
+    const dy = ay - y;
+    const pixelDist = Math.sqrt(dx * dx + dy * dy);
+    if (pixelDist < bestPixelDist && pixelDist <= SNAP_PIXEL_RADIUS) {
+      bestPixelDist = pixelDist;
+      snappedLine = anomaly.l;
+      detectedType = anomaly.t;
     }
   }
 
-  if (closestAnomaly) {
-    detectedType = closestAnomaly.t;
-  } else if (hz >= HOLOGRAPHIC_LAYERS.ANOMALY.min) {
+  if (snappedLine === null && hz >= HOLOGRAPHIC_LAYERS.ANOMALY.min) {
     detectedType = "Anomaly/Error";
   }
 
-  // 4. Extract JIT Context
+  const resolvedLine = snappedLine !== null ? snappedLine : estimatedLine;
+
+  // 4. Extract JIT Context centered on the resolved line
   const content = fs.readFileSync(absoluteFilePath, "utf-8");
   const lines = content.split("\n");
   const totalLines = lines.length;
   const windowSize = SPECTROGRAM_CONFIG.CONTEXT_WINDOW;
-  const startLine = Math.max(0, estimatedLine - Math.floor(windowSize / 2));
+  const startLine = Math.max(0, resolvedLine - Math.floor(windowSize / 2));
   const endLine = Math.min(totalLines, startLine + windowSize);
-  
+
   const contextLines = lines.slice(startLine, endLine).map((line, i) => {
     const currentLineNum = startLine + i + 1;
-    const marker = currentLineNum === estimatedLine + 1 ? "> " : "  ";
+    const marker = currentLineNum === resolvedLine + 1 ? "> " : "  ";
     return `${marker}${currentLineNum} | ${line}`;
   });
 
   const context = `
 File: ${entry.f}
-Line: ${estimatedLine + 1}
+Line: ${resolvedLine + 1}
 Type: ${detectedType}
 
 \`\`\`typescript
@@ -83,8 +88,8 @@ ${contextLines.join("\n")}
 `;
 
   return {
-    file: entry.file,
-    line: estimatedLine + 1,
+    file: entry.f,
+    line: resolvedLine + 1,
     type: detectedType,
     context
   };

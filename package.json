@@ -26,7 +26,8 @@
     "start": "bun src/mcp-server.ts",
     "scan": "bun src/index.ts",
     "build": "bun build src/index.ts src/mcp-server.ts --outdir ./dist --target node && tsc --emitDeclarationOnly --declaration --noEmit false",
-    "prepublishOnly": "bun run build"
+    "prepublishOnly": "bun run build",
+    "test": "bun test"
   },
   "devDependencies": {
     "@types/bun": "latest"
